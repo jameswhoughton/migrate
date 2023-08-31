@@ -4,129 +4,114 @@ import (
 	"database/sql"
 	"os"
 	"regexp"
-	"strings"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type testOS struct {
-	files       []string
-	directories []string
-}
+const MIGRATION_DIR = "migrations_test"
 
-func (t *testOS) Stat(name string) (os.FileInfo, error) {
-	for _, filename := range t.files {
-		if filename == name {
-			return nil, nil
-		}
-	}
-
-	for _, dirname := range t.directories {
-		if dirname == name {
-			return nil, nil
-		}
-	}
-
-	return nil, &os.PathError{Op: "stat", Path: name, Err: os.ErrNotExist}
-}
-
-func (*testOS) IsNotExist(err error) bool { return os.IsNotExist(err) }
-
-func (t *testOS) Mkdir(name string, perm os.FileMode) error {
-	t.directories = append(t.directories, name)
-
-	return nil
-}
-
-func (t *testOS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	t.files = append(t.files, name)
-
-	return nil
+func cleanFiles() {
+	os.RemoveAll(MIGRATION_DIR)
 }
 
 // creates migrations dir if doesn't exist
 func TestCreatesMigrationDirectoryIfMissing(t *testing.T) {
-	tOS := &testOS{}
+	defer cleanFiles()
 
-	createMigration(tOS, "migrations", "test")
+	createMigration("migrations", "test")
 
-	if len(tOS.directories) != 1 || tOS.directories[0] != "migrations" {
-		t.Fatal("migrations directory not found in: " + strings.Join(tOS.directories, ", "))
+	if _, err := os.Stat(MIGRATION_DIR); os.IsNotExist(err) {
+		t.Fatal("migrations directory not found")
 	}
 }
 
 // creates migration pair
 func TestCreatesAMigrationPair(t *testing.T) {
-	tOS := &testOS{}
+	defer cleanFiles()
 
-	createMigration(tOS, "migrations", "test")
+	createMigration(MIGRATION_DIR, "test")
 
-	if len(tOS.files) != 2 {
-		t.Fatalf("Expected 2 files, got %d\n", len(tOS.files))
+	files, err := os.ReadDir(MIGRATION_DIR)
+
+	if err != nil {
+		t.Fatalf("could not read directory: %s (%s)\n", MIGRATION_DIR, err)
+	}
+
+	if len(files) != 2 {
+		t.Fatalf("Expected 2 files, got %d\n", len(files))
 	}
 
 	upRegexp, _ := regexp.Compile("[0-9]+_test_up.sql")
 	downRegexp, _ := regexp.Compile("[0-9]+_test_down.sql")
 
-	if !upRegexp.Match([]byte(tOS.files[0])) {
-		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", tOS.files[0])
+	if !upRegexp.Match([]byte(files[0].Name())) {
+		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", files[0].Name())
 	}
 
-	if !downRegexp.Match([]byte(tOS.files[1])) {
-		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", tOS.files[0])
+	if !downRegexp.Match([]byte(files[1].Name())) {
+		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", files[1].Name())
 	}
 }
 
 // Any non-alphanumeric characters in the name should be replaced with an underscore
 func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
-	tOS := &testOS{}
+	defer cleanFiles()
 
-	createMigration(tOS, "migrations", "test 123 !bg**,TEST")
+	createMigration(MIGRATION_DIR, "test 123 !bg**,TEST")
 
-	if len(tOS.files) != 2 {
-		t.Fatalf("Expected 2 files found %d \n", len(tOS.files))
+	files, err := os.ReadDir(MIGRATION_DIR)
+
+	if err != nil {
+		t.Fatalf("could not read directory: %s (%s)\n", MIGRATION_DIR, err)
+	}
+
+	if len(files) != 2 {
+		t.Fatalf("Expected 2 files, got %d\n", len(files))
 	}
 
 	upRegexp, _ := regexp.Compile("[0-9]+_test_123_bg_TEST_up.sql")
 	downRegexp, _ := regexp.Compile("[0-9]+_test_123_bg_TEST_down.sql")
 
-	if !upRegexp.Match([]byte(tOS.files[0])) {
-		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", tOS.files[0])
+	if !upRegexp.Match([]byte(files[0].Name())) {
+		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", files[0].Name())
 	}
 
-	if !downRegexp.Match([]byte(tOS.files[1])) {
-		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", tOS.files[0])
+	if !downRegexp.Match([]byte(files[1].Name())) {
+		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", files[1].Name())
 	}
 }
 
 // runMigrations() should create .log if missing
 func TestCreateslogFileIfMissing(t *testing.T) {
-	tOS := &testOS{}
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
+	defer cleanFiles()
 
-	runMigrations(tOS, conn, "migrations")
+	runMigrations(conn, MIGRATION_DIR)
 
-	if len(tOS.files) != 1 || !strings.HasSuffix(tOS.files[0], ".log") {
-		t.Fatal(".log file not found: " + strings.Join(tOS.files, ", "))
+	if _, err := os.Stat(MIGRATION_DIR + string(os.PathSeparator) + ".log"); os.IsNotExist(err) {
+		t.Fatal(".log file not found")
 	}
 }
 
 // runMigrations() should return error if there are no migrations to run
 func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
-	tOS := &testOS{}
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
+	defer cleanFiles()
 
-	err := runMigrations(tOS, conn, "migrations")
+	err := runMigrations(conn, "migrations")
+	expected := ErrorNoMigrations{}
 
 	if err == nil {
-		t.Fatalf("Expected error %s, got nil", ERROR_NO_MIGRATIONS)
+		t.Fatalf("Expected error %s, got nil", expected)
 	}
 
-	if err == ERROR_NO_MIGRATIONS {
-		t.Fatalf("Expected error %s, got %s", ERROR_NO_MIGRATIONS, err)
+	got, isCorrectType := err.(ErrorNoMigrations)
+
+	if !isCorrectType {
+		t.Fatalf("Expected error %s, got %s", expected, got)
 	}
 
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
 	"log"
@@ -9,11 +10,11 @@ import (
 	"time"
 )
 
-type Error string
+type ErrorNoMigrations struct{}
 
-func (e Error) Error() string { return string(e) }
-
-var ERROR_NO_MIGRATIONS = Error("No new migrations to run")
+func (ErrorNoMigrations) Error() string {
+	return "No new migrations to run"
+}
 
 func main() {
 	// Accept database credentials
@@ -33,22 +34,15 @@ func main() {
 			log.Fatalln("Name required for new migration")
 		}
 
-		createMigration(&osFS{}, "migrations", args[1])
+		createMigration("migrations", args[1])
 	case len(args) == 0:
 		//runMigrations(&osFS{}, conn, "migrations")
 	}
 }
 
-type fileSystem interface {
-	Stat(name string) (os.FileInfo, error)
-	IsNotExist(err error) bool
-	Mkdir(name string, perm os.FileMode) error
-	WriteFile(name string, data []byte, perm os.FileMode) error
-}
-
-func createMigration(fs fileSystem, directory, name string) {
-	if _, err := fs.Stat(directory); fs.IsNotExist(err) {
-		fs.Mkdir(directory, 0755)
+func createMigration(directory, name string) {
+	if _, err := os.Stat(directory); os.IsNotExist(err) {
+		os.Mkdir(directory, 0755)
 	}
 
 	// Normalise names
@@ -58,8 +52,8 @@ func createMigration(fs fileSystem, directory, name string) {
 
 	migrationName := fmt.Sprintf("%d_%s", time.Now().Nanosecond(), name)
 
-	fs.WriteFile(directory+string(os.PathSeparator)+migrationName+"_up.sql", []byte(""), 0644)
-	fs.WriteFile(directory+string(os.PathSeparator)+migrationName+"_down.sql", []byte(""), 0644)
+	os.WriteFile(directory+string(os.PathSeparator)+migrationName+"_up.sql", []byte(""), 0644)
+	os.WriteFile(directory+string(os.PathSeparator)+migrationName+"_down.sql", []byte(""), 0644)
 }
 
 type osFS struct{}
@@ -71,18 +65,33 @@ func (*osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
 
-func runMigrations(fs fileSystem, driver *sql.DB, directory string) error {
+func runMigrations(driver *sql.DB, directory string) error {
+	logPath := directory + string(os.PathSeparator) + ".log"
+
 	// Check for .log file and create if missing
-	if _, err := fs.Stat(directory + string(os.PathSeparator) + ".log"); fs.IsNotExist(err) {
-		fs.WriteFile(directory+string(os.PathSeparator)+".log", []byte(""), 0644)
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		log.Printf("Creating log file %s\n", logPath)
+		os.WriteFile(logPath, []byte(""), 0644)
 	}
 
 	// Parse .log to work out last run migration
+	logFile, err := os.Open(logPath)
 
+	if err != nil {
+		log.Fatalf("Cannot open log file: %s\n", err)
+	}
+
+	defer logFile.Close()
+
+	scanner := bufio.NewScanner(logFile)
 	var migrations []string
 
+	for scanner.Scan() {
+		migrations = append(migrations, scanner.Text())
+	}
+
 	if len(migrations) == 0 {
-		return ERROR_NO_MIGRATIONS
+		return ErrorNoMigrations{}
 	}
 
 	// Loop over new migrations and execute writing to .log on success
