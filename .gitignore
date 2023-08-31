@@ -1,0 +1,2 @@
+cmd/migrate/migrations/*
+cmd/migrate/migrate
