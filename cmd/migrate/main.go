@@ -56,21 +56,11 @@ func createMigration(directory, name string) {
 	os.WriteFile(directory+string(os.PathSeparator)+migrationName+"_down.sql", []byte(""), 0644)
 }
 
-type osFS struct{}
-
-func (*osFS) Stat(name string) (os.FileInfo, error)     { return os.Stat(name) }
-func (*osFS) IsNotExist(err error) bool                 { return os.IsNotExist(err) }
-func (*osFS) Mkdir(name string, perm os.FileMode) error { return os.Mkdir(name, perm) }
-func (*osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(name, data, perm)
-}
-
 func runMigrations(driver *sql.DB, directory string) error {
 	logPath := directory + string(os.PathSeparator) + ".log"
 
 	// Check for .log file and create if missing
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		log.Printf("Creating log file %s\n", logPath)
 		os.WriteFile(logPath, []byte(""), 0644)
 	}
 

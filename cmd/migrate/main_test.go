@@ -19,7 +19,7 @@ func cleanFiles() {
 func TestCreatesMigrationDirectoryIfMissing(t *testing.T) {
 	defer cleanFiles()
 
-	createMigration("migrations", "test")
+	createMigration(MIGRATION_DIR, "test")
 
 	if _, err := os.Stat(MIGRATION_DIR); os.IsNotExist(err) {
 		t.Fatal("migrations directory not found")
@@ -45,12 +45,12 @@ func TestCreatesAMigrationPair(t *testing.T) {
 	upRegexp, _ := regexp.Compile("[0-9]+_test_up.sql")
 	downRegexp, _ := regexp.Compile("[0-9]+_test_down.sql")
 
-	if !upRegexp.Match([]byte(files[0].Name())) {
-		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", files[0].Name())
+	if !upRegexp.Match([]byte(files[1].Name())) {
+		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", files[1].Name())
 	}
 
-	if !downRegexp.Match([]byte(files[1].Name())) {
-		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", files[1].Name())
+	if !downRegexp.Match([]byte(files[0].Name())) {
+		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", files[0].Name())
 	}
 }
 
@@ -73,12 +73,12 @@ func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 	upRegexp, _ := regexp.Compile("[0-9]+_test_123_bg_TEST_up.sql")
 	downRegexp, _ := regexp.Compile("[0-9]+_test_123_bg_TEST_down.sql")
 
-	if !upRegexp.Match([]byte(files[0].Name())) {
-		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", files[0].Name())
+	if !upRegexp.Match([]byte(files[1].Name())) {
+		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", files[1].Name())
 	}
 
-	if !downRegexp.Match([]byte(files[1].Name())) {
-		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", files[1].Name())
+	if !downRegexp.Match([]byte(files[0].Name())) {
+		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", files[0].Name())
 	}
 }
 
@@ -87,6 +87,8 @@ func TestCreateslogFileIfMissing(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
+
+	os.Mkdir(MIGRATION_DIR, 0755)
 
 	runMigrations(conn, MIGRATION_DIR)
 
@@ -101,7 +103,9 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	err := runMigrations(conn, "migrations")
+	os.Mkdir(MIGRATION_DIR, 0755)
+
+	err := runMigrations(conn, MIGRATION_DIR)
 	expected := ErrorNoMigrations{}
 
 	if err == nil {
