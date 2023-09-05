@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"os"
 	"regexp"
@@ -117,5 +118,36 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	if !isCorrectType {
 		t.Fatalf("Expected error %s, got %s", expected, got)
 	}
+}
 
+// runMigrations() should log migrations in .log
+func TestRunMigrationsShouldLogMigrations(t *testing.T) {
+	conn, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+	defer cleanFiles()
+
+	createMigration(MIGRATION_DIR, "create_user_table")
+
+	err := runMigrations(conn, MIGRATION_DIR)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	logFile, err := os.Open(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	scanner := bufio.NewScanner(logFile)
+	var migrations []string
+
+	for scanner.Scan() {
+		migrations = append(migrations, scanner.Text())
+	}
+
+	if len(migrations) != 1 {
+		t.Errorf("Expected 1 migration got %d\n", len(migrations))
+	}
 }

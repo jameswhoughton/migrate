@@ -74,10 +74,20 @@ func runMigrations(driver *sql.DB, directory string) error {
 	defer logFile.Close()
 
 	scanner := bufio.NewScanner(logFile)
-	var migrations []string
+	var runMigrations []string
 
 	for scanner.Scan() {
-		migrations = append(migrations, scanner.Text())
+		runMigrations = append(runMigrations, scanner.Text())
+	}
+
+	migrations, err := os.ReadDir(directory)
+
+	if err != nil {
+		return err
+	}
+
+	for _, migration := range migrations {
+
 	}
 
 	if len(migrations) == 0 {
@@ -85,7 +95,9 @@ func runMigrations(driver *sql.DB, directory string) error {
 	}
 
 	// Loop over new migrations and execute writing to .log on success
-
+	for _, migration := range migrations {
+		logFile.Write([]byte(migration))
+	}
 	//
 
 	return nil
