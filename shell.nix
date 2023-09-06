@@ -1,19 +1,22 @@
 { pkgs ? import <nixpkgs> { } }:
 
-with pkgs;
+let unstable = import <unstable> {};
 
-mkShell {
+in 
+pkgs.mkShell {
   buildInputs = [
-    go
-    go-tools
-    gotools
-    gopls
-    go-outline
-    gocode
-    gopkgs
-    gocode-gomod
-    godef
-    golint
-    delve
+    unstable.go
+    unstable.go-tools
+    unstable.gotools
+    unstable.gopls
+    unstable.go-outline
+    unstable.gocode
+    unstable.gopkgs
+    unstable.gocode-gomod
+    unstable.godef
+    unstable.golint
+    unstable.delve
+    unstable.sqlite
+
   ];
 }
