@@ -29,15 +29,16 @@ func main() {
 	}
 
 	switch {
+	case len(args) == 0:
+		conn, _ := sql.Open("sqlite3", "test.db")
+		runMigrations(conn, "migrations")
+
 	case args[0] == "create":
 		if len(args) != 2 {
 			log.Fatalln("Name required for new migration")
 		}
-
-		createMigration("migrations", args[1])
-	case len(args) == 0:
-		//runMigrations(&osFS{}, conn, "migrations")
 	}
+	createMigration("migrations", args[1])
 }
 
 func createMigration(directory, name string) {
@@ -65,7 +66,7 @@ func runMigrations(driver *sql.DB, directory string) error {
 	}
 
 	// Parse .log to work out last run migration
-	logFile, err := os.Open(logPath)
+	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_RDWR, os.ModeAppend)
 
 	if err != nil {
 		log.Fatalf("Cannot open log file: %s\n", err)
@@ -86,19 +87,57 @@ func runMigrations(driver *sql.DB, directory string) error {
 		return err
 	}
 
-	for _, migration := range migrations {
+	var migrationsToRun []string
 
+	for _, migration := range migrations {
+		if migration.Name() == ".log" {
+			continue
+		}
+
+		if sliceContains(runMigrations, migration.Name()) {
+			continue
+		}
+
+		migrationsToRun = append(migrationsToRun, migration.Name())
 	}
 
-	if len(migrations) == 0 {
+	if len(migrationsToRun) == 0 {
 		return ErrorNoMigrations{}
 	}
 
 	// Loop over new migrations and execute writing to .log on success
-	for _, migration := range migrations {
-		logFile.Write([]byte(migration))
+	for _, migration := range migrationsToRun {
+		query, err := os.ReadFile(directory + string(os.PathSeparator) + migration)
+
+		if err != nil {
+			return err
+		}
+		log.Println(directory + string(os.PathSeparator) + migration)
+		log.Println("QUERY: " + string(query))
+
+		_, err = driver.Exec(string(query))
+
+		if err != nil {
+			return err
+		}
+
+		_, err = logFile.Write([]byte(migration))
+
+		if err != nil {
+			return err
+		}
 	}
 	//
 
 	return nil
+}
+
+func sliceContains(s []string, e string) bool {
+	for _, x := range s {
+		if x == e {
+			return true
+		}
+	}
+
+	return false
 }
