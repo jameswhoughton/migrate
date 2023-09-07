@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -94,6 +95,10 @@ func runMigrations(driver *sql.DB, directory string) error {
 			continue
 		}
 
+		if strings.HasSuffix(migration.Name(), "_down.sql") {
+			continue
+		}
+
 		if sliceContains(runMigrations, migration.Name()) {
 			continue
 		}
@@ -112,8 +117,6 @@ func runMigrations(driver *sql.DB, directory string) error {
 		if err != nil {
 			return err
 		}
-		log.Println(directory + string(os.PathSeparator) + migration)
-		log.Println("QUERY: " + string(query))
 
 		_, err = driver.Exec(string(query))
 

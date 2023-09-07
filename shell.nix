@@ -17,6 +17,5 @@ pkgs.mkShell {
     unstable.golint
     unstable.delve
     unstable.sqlite
-
   ];
 }
