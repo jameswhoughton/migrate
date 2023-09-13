@@ -83,7 +83,7 @@ func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 	}
 }
 
-// runMigrations() should create .log if missing
+// migrate() should create .log if missing
 func TestCreateslogFileIfMissing(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
@@ -91,14 +91,14 @@ func TestCreateslogFileIfMissing(t *testing.T) {
 
 	os.Mkdir(MIGRATION_DIR, 0755)
 
-	runMigrations(conn, MIGRATION_DIR)
+	migrate(conn, MIGRATION_DIR)
 
 	if _, err := os.Stat(MIGRATION_DIR + string(os.PathSeparator) + ".log"); os.IsNotExist(err) {
 		t.Fatal(".log file not found")
 	}
 }
 
-// runMigrations() should return error if there are no migrations to run
+// migrate() should return error if there are no migrations to run
 func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
@@ -106,7 +106,7 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 
 	os.Mkdir(MIGRATION_DIR, 0755)
 
-	err := runMigrations(conn, MIGRATION_DIR)
+	err := migrate(conn, MIGRATION_DIR)
 	expected := ErrorNoMigrations{}
 
 	if err == nil {
@@ -120,15 +120,17 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	}
 }
 
-// runMigrations() should log migrations in .log
-func TestRunMigrationsShouldLogMigrations(t *testing.T) {
+// migrate() should log migrations in .log
+func TestMigrateShouldLogMigrations(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	createMigration(MIGRATION_DIR, "create_user_table")
+	migrationName := "create_user_table"
 
-	err := runMigrations(conn, MIGRATION_DIR)
+	createMigration(MIGRATION_DIR, migrationName)
+
+	err := migrate(conn, MIGRATION_DIR)
 
 	if err != nil {
 		t.Fatal(err)
@@ -150,4 +152,31 @@ func TestRunMigrationsShouldLogMigrations(t *testing.T) {
 	if len(migrations) != 1 {
 		t.Errorf("Expected 1 migration got %d\n", len(migrations))
 	}
+
+	if migrations[0] != migrationName {
+		t.Errorf("Expected text `%s` got `%s`", migrationName, migrations[0])
+	}
+}
+
+// rollback() should error if log file missing
+func TestRollbackShouldErrorIfLogFileMissing(t *testing.T) {
+	conn, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+	defer cleanFiles()
+
+	err := rollback(conn, MIGRATION_DIR)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// migrate() should run up migrations in order
+func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
+
+}
+
+// migrate() should run up migrations in order
+func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
+
 }

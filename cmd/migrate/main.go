@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -32,7 +33,7 @@ func main() {
 	switch {
 	case len(args) == 0:
 		conn, _ := sql.Open("sqlite3", "test.db")
-		runMigrations(conn, "migrations")
+		migrate(conn, "migrations")
 
 	case args[0] == "create":
 		if len(args) != 2 {
@@ -58,7 +59,7 @@ func createMigration(directory, name string) {
 	os.WriteFile(directory+string(os.PathSeparator)+migrationName+"_down.sql", []byte(""), 0644)
 }
 
-func runMigrations(driver *sql.DB, directory string) error {
+func migrate(driver *sql.DB, directory string) error {
 	logPath := directory + string(os.PathSeparator) + ".log"
 
 	// Check for .log file and create if missing
@@ -70,7 +71,7 @@ func runMigrations(driver *sql.DB, directory string) error {
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_RDWR, os.ModeAppend)
 
 	if err != nil {
-		log.Fatalf("Cannot open log file: %s\n", err)
+		return errors.New("Cannot open log file: " + err.Error())
 	}
 
 	defer logFile.Close()
@@ -124,13 +125,25 @@ func runMigrations(driver *sql.DB, directory string) error {
 			return err
 		}
 
-		_, err = logFile.Write([]byte(migration))
+		nameRegexp := regexp.MustCompile(`[0-9]+_(.*)_up\.sql`)
+		migrationName := nameRegexp.FindStringSubmatch(migration)
+
+		_, err = logFile.Write([]byte(migrationName[1]))
 
 		if err != nil {
 			return err
 		}
 	}
-	//
+
+	return nil
+}
+
+func rollback(driver *sql.DB, directory string) error {
+	logPath := directory + string(os.PathSeparator) + ".log"
+
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		return err
+	}
 
 	return nil
 }
