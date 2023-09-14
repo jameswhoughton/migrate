@@ -39,11 +39,19 @@ func main() {
 		if len(args) != 2 {
 			log.Fatalln("Name required for new migration")
 		}
+		create("migrations", args[1])
+	case args[0] == "create":
+		conn, _ := sql.Open("sqlite3", "test.db")
+		rollback(conn, "migrations")
 	}
-	createMigration("migrations", args[1])
 }
 
-func createMigration(directory, name string) {
+type Migration struct {
+	up   string
+	down string
+}
+
+func create(directory, name string) Migration {
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
 		os.Mkdir(directory, 0755)
 	}
@@ -55,8 +63,15 @@ func createMigration(directory, name string) {
 
 	migrationName := fmt.Sprintf("%d_%s", time.Now().Nanosecond(), name)
 
-	os.WriteFile(directory+string(os.PathSeparator)+migrationName+"_up.sql", []byte(""), 0644)
-	os.WriteFile(directory+string(os.PathSeparator)+migrationName+"_down.sql", []byte(""), 0644)
+	migration := Migration{
+		up:   migrationName + "_up.sql",
+		down: migrationName + "_down.sql",
+	}
+
+	os.WriteFile(directory+string(os.PathSeparator)+migration.up, []byte(""), 0644)
+	os.WriteFile(directory+string(os.PathSeparator)+migration.down, []byte(""), 0644)
+
+	return migration
 }
 
 func migrate(driver *sql.DB, directory string) error {

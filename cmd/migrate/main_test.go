@@ -20,10 +20,28 @@ func cleanFiles() {
 func TestCreatesMigrationDirectoryIfMissing(t *testing.T) {
 	defer cleanFiles()
 
-	createMigration(MIGRATION_DIR, "test")
+	create(MIGRATION_DIR, "test")
 
 	if _, err := os.Stat(MIGRATION_DIR); os.IsNotExist(err) {
 		t.Fatal("migrations directory not found")
+	}
+}
+
+// create() returns the names of the migration pair
+func TestCreateReturnsNamesOfMigrationPair(t *testing.T) {
+	defer cleanFiles()
+
+	migration := create(MIGRATION_DIR, "test")
+
+	upRegexp, _ := regexp.Compile("[0-9]+_test_up.sql")
+	downRegexp, _ := regexp.Compile("[0-9]+_test_down.sql")
+
+	if !upRegexp.Match([]byte(migration.up)) {
+		t.Fatalf("Up migration doesn't match the expected format, got: %s\n", migration.up)
+	}
+
+	if !downRegexp.Match([]byte(migration.down)) {
+		t.Fatalf("Down migration doesn't match the expected format, got: %s\n", migration.down)
 	}
 }
 
@@ -31,7 +49,7 @@ func TestCreatesMigrationDirectoryIfMissing(t *testing.T) {
 func TestCreatesAMigrationPair(t *testing.T) {
 	defer cleanFiles()
 
-	createMigration(MIGRATION_DIR, "test")
+	create(MIGRATION_DIR, "test")
 
 	files, err := os.ReadDir(MIGRATION_DIR)
 
@@ -59,7 +77,7 @@ func TestCreatesAMigrationPair(t *testing.T) {
 func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 	defer cleanFiles()
 
-	createMigration(MIGRATION_DIR, "test 123 !bg**,TEST")
+	create(MIGRATION_DIR, "test 123 !bg**,TEST")
 
 	files, err := os.ReadDir(MIGRATION_DIR)
 
@@ -128,7 +146,7 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 
 	migrationName := "create_user_table"
 
-	createMigration(MIGRATION_DIR, migrationName)
+	create(MIGRATION_DIR, migrationName)
 
 	err := migrate(conn, MIGRATION_DIR)
 
@@ -166,13 +184,22 @@ func TestRollbackShouldErrorIfLogFileMissing(t *testing.T) {
 
 	err := rollback(conn, MIGRATION_DIR)
 
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Error("Expected error, got nil")
 	}
 }
 
 // migrate() should run up migrations in order
 func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
+	// conn, _ := sql.Open("sqlite3", "test.db")
+	// defer os.Remove("test.db")
+	// defer cleanFiles()
+
+	// migrationA := create(MIGRATION_DIR, "migration_a")
+
+	// os.WriteFile(MIGRATION_DIR + string(os.PathSeparator) + migrationA.up, []byte("CREATE users (ID INT PRIMARY KEY, )"))
+
+	// migrate(conn, MIGRATION_DIR)
 
 }
 
