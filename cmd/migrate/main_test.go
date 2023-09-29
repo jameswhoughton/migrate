@@ -191,15 +191,29 @@ func TestRollbackShouldErrorIfLogFileMissing(t *testing.T) {
 
 // migrate() should run up migrations in order
 func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
-	// conn, _ := sql.Open("sqlite3", "test.db")
-	// defer os.Remove("test.db")
-	// defer cleanFiles()
+	conn, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+	defer cleanFiles()
 
-	// migrationA := create(MIGRATION_DIR, "migration_a")
+	migrationA := create(MIGRATION_DIR, "migration_a")
 
-	// os.WriteFile(MIGRATION_DIR + string(os.PathSeparator) + migrationA.up, []byte("CREATE users (ID INT PRIMARY KEY, )"))
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 
-	// migrate(conn, MIGRATION_DIR)
+	migrate(conn, MIGRATION_DIR)
+
+	query, err := conn.Query("SELECT count(*) FROM users")
+
+	if err != nil {
+		t.Errorf("Error when querying users %v\n", err)
+	}
+
+	var count int64
+
+	query.Scan(&count)
+
+	if count != 0 {
+		t.Errorf("Expected 0 got %d\n", count)
+	}
 
 }
 
