@@ -196,12 +196,14 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	defer cleanFiles()
 
 	migrationA := create(MIGRATION_DIR, "migration_a")
+	migrationB := create(MIGRATION_DIR, "migration_a")
 
-	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.up, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
 
 	migrate(conn, MIGRATION_DIR)
 
-	query, err := conn.Query("SELECT count(*) FROM users")
+	query, err := conn.Query("SELECT count(*) AS count FROM users")
 
 	if err != nil {
 		t.Errorf("Error when querying users %v\n", err)
@@ -211,8 +213,8 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 
 	query.Scan(&count)
 
-	if count != 0 {
-		t.Errorf("Expected 0 got %d\n", count)
+	if count != 1 {
+		t.Errorf("Expected 1 got %d\n", count)
 	}
 
 }
