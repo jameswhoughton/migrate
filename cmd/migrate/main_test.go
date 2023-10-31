@@ -195,31 +195,61 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	migrationA := create(MIGRATION_DIR, "migration_a")
-	migrationB := create(MIGRATION_DIR, "migration_a")
+	migrationA := create(MIGRATION_DIR, "migration")
+	migrationB := create(MIGRATION_DIR, "migration")
 
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
-	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.up, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
 
 	migrate(conn, MIGRATION_DIR)
 
-	query, err := conn.Query("SELECT count(*) AS count FROM users")
+	query, err := conn.Query("SELECT name FROM users")
 
 	if err != nil {
 		t.Errorf("Error when querying users %v\n", err)
 	}
+	defer query.Close()
+	var name string
 
-	var count int64
+	for query.Next() {
+		query.Scan(&name)
 
-	query.Scan(&count)
-
-	if count != 1 {
-		t.Errorf("Expected 1 got %d\n", count)
+		if name != "james" {
+			t.Errorf("Expected 'james' got %s\n", name)
+		}
 	}
 
 }
 
-// migrate() should run up migrations in order
+// rollback() should run up migrations in reverse order
 func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
+	conn, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+	defer cleanFiles()
+
+	migrationA := create(MIGRATION_DIR, "migration")
+	migrationB := create(MIGRATION_DIR, "migration")
+
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+".log", []byte(migrationA.Name()+"\n"+migrationB.Name()), os.ModeAppend)
+
+	rollback(conn, MIGRATION_DIR)
+
+	query, err := conn.Query("SELECT name FROM users")
+
+	if err != nil {
+		t.Errorf("Error when querying users %v\n", err)
+	}
+	defer query.Close()
+	var name string
+
+	for query.Next() {
+		query.Scan(&name)
+
+		if name != "james" {
+			t.Errorf("Expected 'james' got %s\n", name)
+		}
+	}
 
 }
