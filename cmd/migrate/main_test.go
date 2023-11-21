@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
+	"github.com/jameswhoughton/migrate/pkg"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -101,21 +103,6 @@ func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 	}
 }
 
-// migrate() should create .log if missing
-func TestCreateslogFileIfMissing(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
-	defer os.Remove("test.db")
-	defer cleanFiles()
-
-	os.Mkdir(MIGRATION_DIR, 0755)
-
-	migrate(conn, MIGRATION_DIR)
-
-	if _, err := os.Stat(MIGRATION_DIR + string(os.PathSeparator) + ".log"); os.IsNotExist(err) {
-		t.Fatal(".log file not found")
-	}
-}
-
 // migrate() should return error if there are no migrations to run
 func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
@@ -123,8 +110,13 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	defer cleanFiles()
 
 	os.Mkdir(MIGRATION_DIR, 0755)
+	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
-	err := migrate(conn, MIGRATION_DIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = migrate(conn, MIGRATION_DIR, migrationLog)
 	expected := ErrorNoMigrations{}
 
 	if err == nil {
@@ -146,9 +138,14 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 
 	migrationName := "create_user_table"
 
-	create(MIGRATION_DIR, migrationName)
+	migrationPair := create(MIGRATION_DIR, migrationName)
+	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
-	err := migrate(conn, MIGRATION_DIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = migrate(conn, MIGRATION_DIR, migrationLog)
 
 	if err != nil {
 		t.Fatal(err)
@@ -171,21 +168,8 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 		t.Errorf("Expected 1 migration got %d\n", len(migrations))
 	}
 
-	if migrations[0] != migrationName {
+	if strings.HasPrefix(migrations[0], migrationPair.Name()) {
 		t.Errorf("Expected text `%s` got `%s`", migrationName, migrations[0])
-	}
-}
-
-// rollback() should error if log file missing
-func TestRollbackShouldErrorIfLogFileMissing(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
-	defer os.Remove("test.db")
-	defer cleanFiles()
-
-	err := rollback(conn, MIGRATION_DIR)
-
-	if err == nil {
-		t.Error("Expected error, got nil")
 	}
 }
 
@@ -201,7 +185,13 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
 
-	migrate(conn, MIGRATION_DIR)
+	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	migrate(conn, MIGRATION_DIR, migrationLog)
 
 	query, err := conn.Query("SELECT name FROM users")
 
@@ -227,6 +217,7 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
+	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 	migrationA := create(MIGRATION_DIR, "migration")
 	migrationB := create(MIGRATION_DIR, "migration")
 
@@ -234,7 +225,13 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+".log", []byte(migrationA.Name()+"\n"+migrationB.Name()), os.ModeAppend)
 
-	rollback(conn, MIGRATION_DIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	migrate(conn, MIGRATION_DIR, migrationLog)
+
+	rollback(conn, MIGRATION_DIR, migrationLog)
 
 	query, err := conn.Query("SELECT name FROM users")
 

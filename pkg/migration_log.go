@@ -1,4 +1,4 @@
-package main
+package pkg
 
 import (
 	"bufio"
@@ -18,13 +18,7 @@ func (ml *MigrationLog) Name() string {
 }
 
 func (ml *MigrationLog) Load() error {
-	directory := filepath.Dir(ml.filePath)
-
-	if _, err := os.Stat(directory); os.IsNotExist(err) {
-		os.Mkdir(directory, 0755)
-	}
-
-	logFile, err := os.OpenFile(ml.filePath, os.O_APPEND|os.O_RDWR, os.ModeAppend)
+	logFile, err := os.OpenFile(ml.filePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, os.ModeAppend)
 
 	if err != nil {
 		return errors.New("Cannot open log file: " + err.Error())
@@ -59,7 +53,7 @@ func (ml *MigrationLog) Add(migration string) error {
 	err := os.WriteFile(ml.filePath, []byte(migration), os.ModeAppend)
 
 	if err != nil {
-		return fmt.Errorf("Cannot write migration to log file: %w", err)
+		return fmt.Errorf("cannot write migration to log file: %w", err)
 	}
 
 	ml.migrations = append(ml.migrations, migration)
@@ -88,12 +82,27 @@ func (ml *MigrationLog) Pop() (string, error) {
 
 	migration := ml.migrations[lastIndex]
 
-	ml.migrations = ml.migrations[:lastIndex-1]
+	ml.migrations = ml.migrations[:lastIndex]
 
 	return migration, nil
 }
 
-func initMigrationLog(filePath string) (*MigrationLog, error) {
+// Returns an instance of MigrationLog with migrations loaded
+func InitMigrationLog(filePath string) (*MigrationLog, error) {
+	directory := filepath.Dir(filePath)
+
+	if _, err := os.Stat(directory); os.IsNotExist(err) {
+		os.Mkdir(directory, 0755)
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		err := os.WriteFile(filePath, []byte{}, 0644)
+
+		if err != nil {
+			return nil, errors.New("Error creating log file: " + err.Error())
+		}
+	}
+
 	log := MigrationLog{
 		filePath: filePath,
 	}
