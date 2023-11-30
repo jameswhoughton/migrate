@@ -1,10 +1,9 @@
-package main
+package migrate
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -19,38 +18,6 @@ func (ErrorNoMigrations) Error() string {
 	return "No new migrations to run"
 }
 
-func main() {
-	// Accept database credentials
-
-	// Handle arguments
-	args := os.Args[1:]
-
-	if len(args) > 2 {
-		log.Fatalln("Too many arguments")
-	}
-
-	migrationLog, err := migrationLog.Init("migrations/.log")
-
-	if err != nil {
-		log.Fatal(fmt.Errorf("Error initialising the log: %w", err))
-	}
-
-	switch {
-	case len(args) == 0:
-		conn, _ := sql.Open("sqlite3", "test.db")
-		migrate(conn, "migrations", migrationLog)
-
-	case args[0] == "create":
-		if len(args) != 2 {
-			log.Fatalln("Name required for new migration")
-		}
-		create("migrations", args[1])
-	case args[0] == "rollback":
-		conn, _ := sql.Open("sqlite3", "test.db")
-		rollback(conn, "migrations", migrationLog)
-	}
-}
-
 type Migration struct {
 	up   string
 	down string
@@ -62,7 +29,7 @@ func (m *Migration) Name() string {
 	return nameRegex.FindString(m.up)
 }
 
-func create(directory, name string) Migration {
+func Create(directory, name string) Migration {
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
 		os.Mkdir(directory, 0755)
 	}
@@ -72,7 +39,7 @@ func create(directory, name string) Migration {
 
 	name = illegalCharacterRegexp.ReplaceAllString(name, "_")
 
-	migrationName := fmt.Sprintf("%d_%s", time.Now().Nanosecond(), name)
+	migrationName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), name)
 
 	migration := Migration{
 		up:   migrationName + "_up.sql",
@@ -85,7 +52,7 @@ func create(directory, name string) Migration {
 	return migration
 }
 
-func migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
+func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
 	migrations, err := os.ReadDir(directory)
 
 	if err != nil {
@@ -153,7 +120,7 @@ func isUpMigration(fileName, directory string, log *migrationLog.MigrationLog) b
 	return true
 }
 
-func rollback(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
+func Rollback(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
 	if log.Count() == 0 {
 		return errors.New("no migrations to roll back")
 	}

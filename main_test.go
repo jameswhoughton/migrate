@@ -1,4 +1,4 @@
-package main
+package migrate
 
 import (
 	"bufio"
@@ -57,18 +57,18 @@ func readLog(fileName string) ([]migrationLog.Migration, error) {
 func TestCreatesMigrationDirectoryIfMissing(t *testing.T) {
 	defer cleanFiles()
 
-	create(MIGRATION_DIR, "test")
+	Create(MIGRATION_DIR, "test")
 
 	if _, err := os.Stat(MIGRATION_DIR); os.IsNotExist(err) {
 		t.Fatal("migrations directory not found")
 	}
 }
 
-// create() returns the names of the migration pair
+// Create() returns the names of the migration pair
 func TestCreateReturnsNamesOfMigrationPair(t *testing.T) {
 	defer cleanFiles()
 
-	migration := create(MIGRATION_DIR, "test")
+	migration := Create(MIGRATION_DIR, "test")
 
 	upRegexp, _ := regexp.Compile("[0-9]+_test_up.sql")
 	downRegexp, _ := regexp.Compile("[0-9]+_test_down.sql")
@@ -86,7 +86,7 @@ func TestCreateReturnsNamesOfMigrationPair(t *testing.T) {
 func TestCreatesAMigrationPair(t *testing.T) {
 	defer cleanFiles()
 
-	create(MIGRATION_DIR, "test")
+	Create(MIGRATION_DIR, "test")
 
 	files, err := os.ReadDir(MIGRATION_DIR)
 
@@ -114,7 +114,7 @@ func TestCreatesAMigrationPair(t *testing.T) {
 func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 	defer cleanFiles()
 
-	create(MIGRATION_DIR, "test 123 !bg**,TEST")
+	Create(MIGRATION_DIR, "test 123 !bg**,TEST")
 
 	files, err := os.ReadDir(MIGRATION_DIR)
 
@@ -138,7 +138,7 @@ func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 	}
 }
 
-// migrate() should return error if there are no migrations to run
+// Migrate() should return error if there are no migrations to run
 func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
@@ -151,7 +151,7 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = migrate(conn, MIGRATION_DIR, migrationLog)
+	err = Migrate(conn, MIGRATION_DIR, migrationLog)
 	expected := ErrorNoMigrations{}
 
 	if err == nil {
@@ -165,7 +165,7 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	}
 }
 
-// migrate() should log migrations in .log
+// Migrate() should log migrations in .log
 func TestMigrateShouldLogMigrations(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
@@ -173,14 +173,14 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 
 	migrationName := "create_user_table"
 
-	migrationPair := create(MIGRATION_DIR, migrationName)
+	migrationPair := Create(MIGRATION_DIR, migrationName)
 	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = migrate(conn, MIGRATION_DIR, migrationLog)
+	err = Migrate(conn, MIGRATION_DIR, migrationLog)
 
 	if err != nil {
 		t.Fatal(err)
@@ -201,14 +201,14 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 	}
 }
 
-// migrate() should run up migrations in order
+// Migrate() should run up migrations in order
 func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	migrationA := create(MIGRATION_DIR, "migration")
-	migrationB := create(MIGRATION_DIR, "migration")
+	migrationA := Create(MIGRATION_DIR, "migration")
+	migrationB := Create(MIGRATION_DIR, "migration")
 
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
@@ -219,7 +219,7 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, migrationLog)
 
 	query, err := conn.Query("SELECT name FROM users")
 
@@ -238,15 +238,15 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	}
 }
 
-// rollback() should run up migrations in reverse order
+// Rollback() should run up migrations in reverse order
 func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
 	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
-	migrationA := create(MIGRATION_DIR, "migration")
-	migrationB := create(MIGRATION_DIR, "migration")
+	migrationA := Create(MIGRATION_DIR, "migration")
+	migrationB := Create(MIGRATION_DIR, "migration")
 
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
@@ -255,9 +255,9 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, migrationLog)
 
-	rollback(conn, MIGRATION_DIR, migrationLog)
+	Rollback(conn, MIGRATION_DIR, migrationLog)
 
 	query, err := conn.Query("SELECT name FROM users")
 
@@ -289,7 +289,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	create(MIGRATION_DIR, "migrationA")
+	Create(MIGRATION_DIR, "migrationA")
 
 	migrations, err := readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -301,7 +301,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should be empty, found %d migrations\n", len(migrations))
 	}
 
-	migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, migrationLog)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -313,9 +313,9 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Expected migration to have step of 1, found %d", migrations[0].Step)
 	}
 
-	create(MIGRATION_DIR, "migrationB")
+	Create(MIGRATION_DIR, "migrationB")
 
-	migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, migrationLog)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -327,7 +327,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Expected migration to have step of 2, found %d", migrations[1].Step)
 	}
 
-	err = rollback(conn, MIGRATION_DIR, migrationLog)
+	err = Rollback(conn, MIGRATION_DIR, migrationLog)
 
 	if err != nil {
 		t.Fatal(err)
@@ -339,7 +339,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should contain 1 migration, found %d migrations\n", len(migrations))
 	}
 
-	rollback(conn, MIGRATION_DIR, migrationLog)
+	Rollback(conn, MIGRATION_DIR, migrationLog)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
