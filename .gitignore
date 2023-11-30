@@ -1,2 +1,1 @@
-cmd/migrate/migrations/*
-cmd/migrate/migrate
+cmd/createmigration/createmigration
