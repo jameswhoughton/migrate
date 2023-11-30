@@ -1,4 +1,4 @@
-package pkg
+package migrationLog
 
 import (
 	"os"
@@ -17,16 +17,16 @@ func createLogFile(lines []string) error {
 	return os.WriteFile(LOG_DIR+string(os.PathSeparator)+LOG_FILE, []byte(strings.Join(lines, "\n")), 0644)
 }
 
-// Name() returns the name of the log file without the path
+// Name() returns the Name of the log file without the path
 func TestNameReturnsNameOfLogFile(t *testing.T) {
 	migrationLog := MigrationLog{
 		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	name := migrationLog.Name()
+	Name := migrationLog.Name()
 
-	if name != LOG_FILE {
-		t.Fatalf("expected %s, got %s", LOG_FILE, name)
+	if Name != LOG_FILE {
+		t.Fatalf("expected %s, got %s", LOG_FILE, Name)
 	}
 }
 
@@ -35,8 +35,8 @@ func TestCountReturnsTheCorrectNumberOfMigrations(t *testing.T) {
 	defer cleanFiles()
 
 	cases := [][]string{
-		{"a", "b", "c"},
-		{"a"},
+		{"0,a", "1,b", "1,c"},
+		{"0,a"},
 		{},
 	}
 
@@ -77,7 +77,7 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 
 	cases := []testCase{
 		{
-			migrations: []string{"a", "b", "c"},
+			migrations: []string{"0,a", "0,b", "0,c"},
 			search:     "a",
 			expected:   true,
 		},
@@ -87,12 +87,12 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 			expected:   false,
 		},
 		{
-			migrations: []string{"migration A", "migration B"},
+			migrations: []string{"0,migration A", "1,migration B"},
 			search:     "migration",
 			expected:   false,
 		},
 		{
-			migrations: []string{"migration A", "migration B"},
+			migrations: []string{"0,migration A", "1,migration B"},
 			search:     "migration B",
 			expected:   true,
 		},
@@ -131,7 +131,7 @@ func TestAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
 		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	err := migrationLog.Add("test")
+	err := migrationLog.Add("test", 0)
 
 	if err == nil {
 		t.Fatal("expecting error got nil")
@@ -162,7 +162,7 @@ func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	err = migrationLog.Add("test")
+	err = migrationLog.Add("test", 0)
 
 	if err != nil {
 		t.Fatal(err)
@@ -172,8 +172,8 @@ func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 		t.Fatalf("Expected 1 migrations, got %d", len(migrationLog.migrations))
 	}
 
-	if migrationLog.migrations[0] != "test" {
-		t.Fatalf("Expected 'test', got %s", migrationLog.migrations[0])
+	if migrationLog.migrations[0].Name != "test" {
+		t.Fatalf("Expected 'test', got %s", migrationLog.migrations[0].Name)
 	}
 }
 
@@ -197,7 +197,7 @@ func TestPopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
 		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	migrationLog.Add("test")
+	migrationLog.Add("test", 0)
 
 	// Remove the file to trigger error on pop
 	os.Remove(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
@@ -223,17 +223,21 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = os.WriteFile(LOG_DIR+string(os.PathSeparator)+LOG_FILE, []byte{}, 0644)
+	migrations := []string{"0,a", "1,b", "1,c"}
+
+	err = createLogFile(migrations)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	migrationLog := MigrationLog{
-		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
-	}
+	filePath := LOG_DIR + string(os.PathSeparator) + LOG_FILE
 
-	migrationLog.Add("test")
+	migrationLog, err := Init(filePath)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	migration, err := migrationLog.Pop()
 
@@ -241,12 +245,8 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if migration != "test" {
-		t.Fatalf("expected 'test', got %s\n", migration)
-	}
-
-	if len(migrationLog.migrations) != 0 {
-		t.Fatalf("Expected 0 migrations, got %d", len(migrationLog.migrations))
+	if migration.Name != "c" {
+		t.Fatalf("Expected migration 'c' got '%s", migration.Name)
 	}
 }
 
@@ -264,7 +264,7 @@ func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
 		t.Fatalf("File %s already exists", filePath)
 	}
 
-	_, err := InitMigrationLog(filePath)
+	_, err := Init(filePath)
 
 	if err != nil {
 		t.Fatal(err)
@@ -272,5 +272,36 @@ func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		t.Fatal(err)
+	}
+}
+
+// NextStep returns the next available step index
+func TestLastStepReturnsNextAvaiableIndex(t *testing.T) {
+	defer cleanFiles()
+
+	migrations := []string{"0,a", "1,b", "1,c"}
+
+	expected := 1
+
+	os.Mkdir(LOG_DIR, 0755)
+
+	err := createLogFile(migrations)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	filePath := LOG_DIR + string(os.PathSeparator) + LOG_FILE
+
+	migrationLog, err := Init(filePath)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual := migrationLog.LastStep()
+
+	if expected != actual {
+		t.Fatalf("Expected %d got %d", expected, actual)
 	}
 }

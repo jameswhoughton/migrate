@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jameswhoughton/migrate/pkg"
+	"github.com/jameswhoughton/migrate/pkg/migrationLog"
 )
 
 type ErrorNoMigrations struct{}
@@ -28,7 +28,7 @@ func main() {
 		log.Fatalln("Too many arguments")
 	}
 
-	migrationLog, err := pkg.InitMigrationLog("migrations/.log")
+	migrationLog, err := migrationLog.Init("migrations/.log")
 
 	if err != nil {
 		log.Fatal(fmt.Errorf("Error initialising the log: %w", err))
@@ -44,7 +44,7 @@ func main() {
 			log.Fatalln("Name required for new migration")
 		}
 		create("migrations", args[1])
-	case args[0] == "create":
+	case args[0] == "rollback":
 		conn, _ := sql.Open("sqlite3", "test.db")
 		rollback(conn, "migrations", migrationLog)
 	}
@@ -84,7 +84,7 @@ func create(directory, name string) Migration {
 	return migration
 }
 
-func migrate(driver *sql.DB, directory string, log *pkg.MigrationLog) error {
+func migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
 	migrations, err := os.ReadDir(directory)
 
 	if err != nil {
@@ -113,6 +113,8 @@ func migrate(driver *sql.DB, directory string, log *pkg.MigrationLog) error {
 		return ErrorNoMigrations{}
 	}
 
+	step := log.LastStep() + 1
+
 	// Loop over new migrations and execute writing to .log on success
 	for _, migration := range migrationsToRun {
 		query, err := os.ReadFile(directory + string(os.PathSeparator) + migration)
@@ -130,7 +132,7 @@ func migrate(driver *sql.DB, directory string, log *pkg.MigrationLog) error {
 		nameRegexp := regexp.MustCompile(`(.*)_up\.sql`)
 		migrationName := nameRegexp.FindStringSubmatch(migration)
 
-		err = log.Add(migrationName[1])
+		err = log.Add(migrationName[1], step)
 
 		if err != nil {
 			return err
@@ -140,7 +142,7 @@ func migrate(driver *sql.DB, directory string, log *pkg.MigrationLog) error {
 	return nil
 }
 
-func rollback(driver *sql.DB, directory string, log *pkg.MigrationLog) error {
+func rollback(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
 	for log.Count() > 0 {
 		migration, err := log.Pop()
 
@@ -148,7 +150,7 @@ func rollback(driver *sql.DB, directory string, log *pkg.MigrationLog) error {
 			return err
 		}
 
-		query, err := os.ReadFile(directory + string(os.PathSeparator) + migration + "_down.sql")
+		query, err := os.ReadFile(directory + string(os.PathSeparator) + migration.Name + "_down.sql")
 
 		if err != nil {
 			return err

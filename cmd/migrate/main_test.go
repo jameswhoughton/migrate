@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jameswhoughton/migrate/pkg"
+	"github.com/jameswhoughton/migrate/pkg/migrationLog"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -110,7 +110,7 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	defer cleanFiles()
 
 	os.Mkdir(MIGRATION_DIR, 0755)
-	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 	migrationName := "create_user_table"
 
 	migrationPair := create(MIGRATION_DIR, migrationName)
-	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +185,7 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
 
-	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
 	if err != nil {
 		t.Fatal(err)
@@ -208,7 +208,6 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 			t.Errorf("Expected 'james' got %s\n", name)
 		}
 	}
-
 }
 
 // rollback() should run up migrations in reverse order
@@ -217,13 +216,12 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	migrationLog, err := pkg.InitMigrationLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 	migrationA := create(MIGRATION_DIR, "migration")
 	migrationB := create(MIGRATION_DIR, "migration")
 
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
-	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+".log", []byte(migrationA.Name()+"\n"+migrationB.Name()), os.ModeAppend)
 
 	if err != nil {
 		t.Fatal(err)
