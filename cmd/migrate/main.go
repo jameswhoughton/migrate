@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -91,33 +92,28 @@ func migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 		return err
 	}
 
-	var migrationsToRun []string
-
-	for _, migration := range migrations {
-		if migration.Name() == log.Name() {
-			continue
-		}
-
-		if strings.HasSuffix(migration.Name(), "_down.sql") {
-			continue
-		}
-
-		if log.Contains(migration.Name()) {
-			continue
-		}
-
-		migrationsToRun = append(migrationsToRun, migration.Name())
-	}
-
-	if len(migrationsToRun) == 0 {
-		return ErrorNoMigrations{}
-	}
-
+	newMigrations := false
+	nameRegexp := regexp.MustCompile(`(.*)_up\.sql`)
 	step := log.LastStep() + 1
 
-	// Loop over new migrations and execute writing to .log on success
-	for _, migration := range migrationsToRun {
-		query, err := os.ReadFile(directory + string(os.PathSeparator) + migration)
+	for _, migration := range migrations {
+		fileName := migration.Name()
+
+		if !isUpMigration(fileName, directory, log) {
+			continue
+		}
+
+		migrationName := nameRegexp.FindStringSubmatch(fileName)
+
+		// Ignore any migrations that have already run
+		if log.Contains(migrationName[1]) {
+			continue
+		}
+
+		// Run migration and add to log
+		newMigrations = true
+
+		query, err := os.ReadFile(directory + string(os.PathSeparator) + fileName)
 
 		if err != nil {
 			return err
@@ -129,9 +125,6 @@ func migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 			return err
 		}
 
-		nameRegexp := regexp.MustCompile(`(.*)_up\.sql`)
-		migrationName := nameRegexp.FindStringSubmatch(migration)
-
 		err = log.Add(migrationName[1], step)
 
 		if err != nil {
@@ -139,11 +132,35 @@ func migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 		}
 	}
 
+	if !newMigrations {
+		return ErrorNoMigrations{}
+	}
+
 	return nil
 }
 
+func isUpMigration(fileName, directory string, log *migrationLog.MigrationLog) bool {
+	// Ignore log file
+	if fileName == log.Name() {
+		return false
+	}
+
+	// Ignore down migrations
+	if strings.HasSuffix(fileName, "_down.sql") {
+		return false
+	}
+
+	return true
+}
+
 func rollback(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
-	for log.Count() > 0 {
+	if log.Count() == 0 {
+		return errors.New("no migrations to roll back")
+	}
+
+	step := log.LastStep()
+
+	for log.LastStep() == step {
 		migration, err := log.Pop()
 
 		if err != nil {

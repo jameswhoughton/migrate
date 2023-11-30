@@ -1,7 +1,10 @@
 package migrationLog
 
 import (
+	"bufio"
+	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -15,6 +18,39 @@ func cleanFiles() {
 
 func createLogFile(lines []string) error {
 	return os.WriteFile(LOG_DIR+string(os.PathSeparator)+LOG_FILE, []byte(strings.Join(lines, "\n")), 0644)
+}
+
+func readLog(fileName string) ([]Migration, error) {
+	logFile, err := os.Open(LOG_DIR + string(os.PathSeparator) + fileName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(logFile)
+	var migrations []Migration
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(scanner.Text(), ",")
+
+		if len(parts) != 2 {
+			return nil, errors.New("log file line malformed: " + line)
+		}
+
+		step, err := strconv.Atoi(parts[0])
+
+		if err != nil {
+			return nil, errors.Join(errors.New("Invalid step: "+parts[0]), err)
+		}
+
+		migrations = append(migrations, Migration{
+			Step: step,
+			Name: parts[1],
+		})
+	}
+
+	return migrations, nil
 }
 
 // Name() returns the Name of the log file without the path
@@ -162,18 +198,42 @@ func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	err = migrationLog.Add("test", 0)
+	err = migrationLog.Add("testA", 0)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(migrationLog.migrations) != 1 {
-		t.Fatalf("Expected 1 migrations, got %d", len(migrationLog.migrations))
+	err = migrationLog.Add("testB", 0)
+
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if migrationLog.migrations[0].Name != "test" {
-		t.Fatalf("Expected 'test', got %s", migrationLog.migrations[0].Name)
+	if len(migrationLog.migrations) != 2 {
+		t.Fatalf("Expected 2 migrations, got %d", len(migrationLog.migrations))
+	}
+
+	if migrationLog.migrations[0].Name != "testA" {
+		t.Fatalf("Expected 'testA', got %s", migrationLog.migrations[0].Name)
+	}
+
+	if migrationLog.migrations[1].Name != "testB" {
+		t.Fatalf("Expected 'testB', got %s", migrationLog.migrations[1].Name)
+	}
+
+	migrationsFromFile, err := readLog(LOG_FILE)
+
+	if len(migrationsFromFile) != 2 {
+		t.Fatalf("Expected 2 migrations, got %d", len(migrationsFromFile))
+	}
+
+	if migrationsFromFile[0].Name != "testA" {
+		t.Fatalf("Expected 'testA', got %s", migrationsFromFile[0].Name)
+	}
+
+	if migrationsFromFile[1].Name != "testB" {
+		t.Fatalf("Expected 'testB', got %s", migrationsFromFile[1].Name)
 	}
 }
 

@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"database/sql"
+	"errors"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -16,6 +18,39 @@ const MIGRATION_DIR = "migrations_test"
 
 func cleanFiles() {
 	os.RemoveAll(MIGRATION_DIR)
+}
+
+func readLog(fileName string) ([]migrationLog.Migration, error) {
+	logFile, err := os.Open(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(logFile)
+	var migrations []migrationLog.Migration
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(scanner.Text(), ",")
+
+		if len(parts) != 2 {
+			return nil, errors.New("log file line malformed: " + line)
+		}
+
+		step, err := strconv.Atoi(parts[0])
+
+		if err != nil {
+			return nil, errors.Join(errors.New("Invalid step: "+parts[0]), err)
+		}
+
+		migrations = append(migrations, migrationLog.Migration{
+			Step: step,
+			Name: parts[1],
+		})
+	}
+
+	return migrations, nil
 }
 
 // creates migrations dir if doesn't exist
@@ -151,25 +186,18 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	logFile, err := os.Open(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	migrations, err := readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	scanner := bufio.NewScanner(logFile)
-	var migrations []string
-
-	for scanner.Scan() {
-		migrations = append(migrations, scanner.Text())
 	}
 
 	if len(migrations) != 1 {
 		t.Errorf("Expected 1 migration got %d\n", len(migrations))
 	}
 
-	if strings.HasPrefix(migrations[0], migrationPair.Name()) {
-		t.Errorf("Expected text `%s` got `%s`", migrationName, migrations[0])
+	if strings.HasPrefix(migrations[0].Name, migrationPair.Name()) {
+		t.Errorf("Expected text `%s` got `%s`", migrationName, migrations[0].Name)
 	}
 }
 
@@ -247,4 +275,75 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 		}
 	}
 
+}
+
+// migrate and rollback step correctly
+func TestMigrateandRollbackStepCorrectly(t *testing.T) {
+	conn, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+	defer cleanFiles()
+
+	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	create(MIGRATION_DIR, "migrationA")
+
+	migrations, err := readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(migrations) != 0 {
+		t.Errorf("Log file should be empty, found %d migrations\n", len(migrations))
+	}
+
+	migrate(conn, MIGRATION_DIR, migrationLog)
+
+	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if len(migrations) != 1 {
+		t.Fatalf("Log file should contain 1 migration, found %d migrations\n", len(migrations))
+	}
+
+	if migrations[0].Step != 1 {
+		t.Errorf("Expected migration to have step of 1, found %d", migrations[0].Step)
+	}
+
+	create(MIGRATION_DIR, "migrationB")
+
+	migrate(conn, MIGRATION_DIR, migrationLog)
+
+	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if len(migrations) != 2 {
+		t.Fatalf("Log file should contain 2 migrations, found %d migrations\n", len(migrations))
+	}
+
+	if migrations[1].Step != 2 {
+		t.Errorf("Expected migration to have step of 2, found %d", migrations[1].Step)
+	}
+
+	err = rollback(conn, MIGRATION_DIR, migrationLog)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if len(migrations) != 1 {
+		t.Errorf("Log file should contain 1 migration, found %d migrations\n", len(migrations))
+	}
+
+	rollback(conn, MIGRATION_DIR, migrationLog)
+
+	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if len(migrations) != 0 {
+		t.Errorf("Log should now be empty, found %d migrations\n", len(migrations))
+	}
 }

@@ -12,15 +12,15 @@ import (
 
 type MigrationLog struct {
 	filePath   string
-	migrations []migration
+	migrations []Migration
 }
 
-type migration struct {
+type Migration struct {
 	Name string
 	Step int
 }
 
-func (m *migration) String() string {
+func (m *Migration) String() string {
 	return strconv.Itoa(m.Step) + "," + m.Name
 }
 
@@ -54,7 +54,7 @@ func (ml *MigrationLog) Load() error {
 			return errors.New("log line Step invalid: " + err.Error())
 		}
 
-		ml.migrations = append(ml.migrations, migration{
+		ml.migrations = append(ml.migrations, Migration{
 			Name: parts[1],
 			Step: Step,
 		})
@@ -78,15 +78,21 @@ func (ml *MigrationLog) Count() int {
 }
 
 func (ml *MigrationLog) Add(Name string, Step int) error {
-	m := migration{
+	m := Migration{
 		Name: Name,
 		Step: Step,
 	}
 
-	err := os.WriteFile(ml.filePath, []byte(m.String()), os.ModeAppend)
+	file, err := os.OpenFile(ml.filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 
 	if err != nil {
-		return fmt.Errorf("cannot write migration to log file: %w", err)
+		return fmt.Errorf("cannot log file: %w", err)
+	}
+
+	defer file.Close()
+
+	if _, err = file.WriteString(m.String() + "\n"); err != nil {
+		return fmt.Errorf("cannot write to log file: %w", err)
 	}
 
 	ml.migrations = append(ml.migrations, m)
@@ -94,10 +100,10 @@ func (ml *MigrationLog) Add(Name string, Step int) error {
 	return nil
 }
 
-func (ml *MigrationLog) Pop() (migration, error) {
+func (ml *MigrationLog) Pop() (Migration, error) {
 	file, err := os.OpenFile(ml.filePath, os.O_RDWR, 0644)
 	if err != nil {
-		return migration{}, err
+		return Migration{}, err
 	}
 	defer file.Close()
 
