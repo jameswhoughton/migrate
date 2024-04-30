@@ -12,12 +12,6 @@ import (
 	"github.com/jameswhoughton/migrate/pkg/migrationLog"
 )
 
-type ErrorNoMigrations struct{}
-
-func (ErrorNoMigrations) Error() string {
-	return "No new migrations to run"
-}
-
 type ErrorQuery struct {
 	queryError error
 	fileName   string
@@ -68,7 +62,6 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 		return err
 	}
 
-	newMigrations := false
 	nameRegexp := regexp.MustCompile(`(.*)_up\.sql`)
 	step := log.LastStep() + 1
 
@@ -85,9 +78,6 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 		if log.Contains(migrationName[1]) {
 			continue
 		}
-
-		// Run migration and add to log
-		newMigrations = true
 
 		query, err := os.ReadFile(directory + string(os.PathSeparator) + fileName)
 
@@ -109,10 +99,6 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 		if err != nil {
 			return err
 		}
-	}
-
-	if !newMigrations {
-		return ErrorNoMigrations{}
 	}
 
 	return nil

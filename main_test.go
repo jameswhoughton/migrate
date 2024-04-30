@@ -138,33 +138,6 @@ func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 	}
 }
 
-// Migrate() should return error if there are no migrations to run
-func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
-	defer os.Remove("test.db")
-	defer cleanFiles()
-
-	os.Mkdir(MIGRATION_DIR, 0755)
-	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = Migrate(conn, MIGRATION_DIR, migrationLog)
-	expected := ErrorNoMigrations{}
-
-	if err == nil {
-		t.Fatalf("Expected error %s, got nil", expected)
-	}
-
-	got, isCorrectType := err.(ErrorNoMigrations)
-
-	if !isCorrectType {
-		t.Fatalf("Expected error %s, got %s", expected, got)
-	}
-}
-
 // Migrate() should return error if the query fails to execute
 func TestReturnsErrorIfNQueryFails(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
