@@ -18,6 +18,15 @@ func (ErrorNoMigrations) Error() string {
 	return "No new migrations to run"
 }
 
+type ErrorQuery struct {
+	queryError error
+	fileName   string
+}
+
+func (e ErrorQuery) Error() string {
+	return "error executing query in " + e.fileName + ": " + e.queryError.Error()
+}
+
 type Migration struct {
 	up   string
 	down string
@@ -66,7 +75,7 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 	for _, migration := range migrations {
 		fileName := migration.Name()
 
-		if !isUpMigration(fileName, directory, log) {
+		if !isUpMigration(fileName, log) {
 			continue
 		}
 
@@ -89,7 +98,10 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 		_, err = driver.Exec(string(query))
 
 		if err != nil {
-			return err
+			return ErrorQuery{
+				queryError: err,
+				fileName:   fileName,
+			}
 		}
 
 		err = log.Add(migrationName[1], step)
@@ -106,7 +118,7 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 	return nil
 }
 
-func isUpMigration(fileName, directory string, log *migrationLog.MigrationLog) bool {
+func isUpMigration(fileName string, log *migrationLog.MigrationLog) bool {
 	// Ignore log file
 	if fileName == log.Name() {
 		return false

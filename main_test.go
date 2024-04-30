@@ -165,6 +165,36 @@ func TestReturnsErrorIfNoMigrationsToRun(t *testing.T) {
 	}
 }
 
+// Migrate() should return error if the query fails to execute
+func TestReturnsErrorIfNQueryFails(t *testing.T) {
+	conn, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+	defer cleanFiles()
+
+	os.Mkdir(MIGRATION_DIR, 0755)
+	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	migration := Create(MIGRATION_DIR, "migration")
+
+	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migration.up, []byte("I am not a valid query"), os.ModeAppend)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = Migrate(conn, MIGRATION_DIR, migrationLog)
+
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	got, isCorrectType := err.(ErrorQuery)
+
+	if !isCorrectType {
+		t.Fatalf("Expected ErrorQuery error, got %s", got)
+	}
+}
+
 // Migrate() should log migrations in .log
 func TestMigrateShouldLogMigrations(t *testing.T) {
 	conn, _ := sql.Open("sqlite3", "test.db")
