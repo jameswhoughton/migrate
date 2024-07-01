@@ -53,19 +53,6 @@ func readLog(fileName string) ([]Migration, error) {
 	return migrations, nil
 }
 
-// Name() returns the Name of the log file without the path
-func TestNameReturnsNameOfLogFile(t *testing.T) {
-	migrationLog := MigrationLog{
-		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
-	}
-
-	Name := migrationLog.Name()
-
-	if Name != LOG_FILE {
-		t.Fatalf("expected %s, got %s", LOG_FILE, Name)
-	}
-}
-
 // Count() returns the correct number of migrations
 func TestCountReturnsTheCorrectNumberOfMigrations(t *testing.T) {
 	defer cleanFiles()
@@ -85,8 +72,8 @@ func TestCountReturnsTheCorrectNumberOfMigrations(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		migrationLog := MigrationLog{
-			filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
+		migrationLog := FileDriver{
+			FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 		}
 
 		err = migrationLog.Load()
@@ -143,8 +130,8 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		migrationLog := MigrationLog{
-			filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
+		migrationLog := FileDriver{
+			FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 		}
 
 		err = migrationLog.Load()
@@ -163,11 +150,11 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 func TestAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
 	// Don't create the log directory, this will cause an error when writing to the log file
 
-	migrationLog := MigrationLog{
-		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
+	migrationLog := FileDriver{
+		FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	err := migrationLog.Add("test", 0)
+	err := migrationLog.Add(Migration{"test", 0})
 
 	if err == nil {
 		t.Fatal("expecting error got nil")
@@ -194,17 +181,17 @@ func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrationLog := MigrationLog{
-		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
+	migrationLog := FileDriver{
+		FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	err = migrationLog.Add("testA", 0)
+	err = migrationLog.Add(Migration{"testA", 0})
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = migrationLog.Add("testB", 0)
+	err = migrationLog.Add(Migration{"testB", 0})
 
 	if err != nil {
 		t.Fatal(err)
@@ -253,11 +240,11 @@ func TestPopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrationLog := MigrationLog{
-		filePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
+	migrationLog := FileDriver{
+		FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
-	migrationLog.Add("test", 0)
+	migrationLog.Add(Migration{"test", 0})
 
 	// Remove the file to trigger error on pop
 	os.Remove(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
@@ -291,9 +278,13 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	filePath := LOG_DIR + string(os.PathSeparator) + LOG_FILE
+	FilePath := LOG_DIR + string(os.PathSeparator) + LOG_FILE
 
-	migrationLog, err := Init(filePath)
+	migrationLog := FileDriver{
+		FilePath: FilePath,
+	}
+
+	err = migrationLog.Init()
 
 	if err != nil {
 		t.Fatal(err)
@@ -310,7 +301,7 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 	}
 }
 
-// InitMigrationLog should create log file if missing
+// InitFileDriver should create log file if missing
 func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
 	defer cleanFiles()
 
@@ -324,7 +315,11 @@ func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
 		t.Fatalf("File %s already exists", filePath)
 	}
 
-	_, err := Init(filePath)
+	migrationLog := FileDriver{
+		FilePath: filePath,
+	}
+
+	err := migrationLog.Init()
 
 	if err != nil {
 		t.Fatal(err)
@@ -353,7 +348,11 @@ func TestLastStepReturnsNextAvaiableIndex(t *testing.T) {
 
 	filePath := LOG_DIR + string(os.PathSeparator) + LOG_FILE
 
-	migrationLog, err := Init(filePath)
+	migrationLog := FileDriver{
+		FilePath: filePath,
+	}
+
+	err = migrationLog.Init()
 
 	if err != nil {
 		t.Fatal(err)

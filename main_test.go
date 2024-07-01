@@ -145,7 +145,11 @@ func TestReturnsErrorIfNQueryFails(t *testing.T) {
 	defer cleanFiles()
 
 	os.Mkdir(MIGRATION_DIR, 0755)
-	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	log := migrationLog.FileDriver{
+		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
+	}
+
+	err := log.Init()
 
 	migration := Create(MIGRATION_DIR, "migration")
 
@@ -155,7 +159,7 @@ func TestReturnsErrorIfNQueryFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Migrate(conn, MIGRATION_DIR, migrationLog)
+	err = Migrate(conn, MIGRATION_DIR, &log)
 
 	if err == nil {
 		t.Fatal("Expected error, got nil")
@@ -177,13 +181,17 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 	migrationName := "create_user_table"
 
 	migrationPair := Create(MIGRATION_DIR, migrationName)
-	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	log := migrationLog.FileDriver{
+		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
+	}
+
+	err := log.Init()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = Migrate(conn, MIGRATION_DIR, migrationLog)
+	err = Migrate(conn, MIGRATION_DIR, &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -216,13 +224,17 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
 
-	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	log := migrationLog.FileDriver{
+		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
+	}
+
+	err := log.Init()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	Migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, &log)
 
 	query, err := conn.Query("SELECT name FROM users")
 
@@ -247,7 +259,11 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	log := migrationLog.FileDriver{
+		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
+	}
+
+	err := log.Init()
 	migrationA := Create(MIGRATION_DIR, "migration")
 	migrationB := Create(MIGRATION_DIR, "migration")
 
@@ -258,9 +274,9 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, &log)
 
-	Rollback(conn, MIGRATION_DIR, migrationLog)
+	Rollback(conn, MIGRATION_DIR, &log)
 
 	query, err := conn.Query("SELECT name FROM users")
 
@@ -286,7 +302,11 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	migrationLog, err := migrationLog.Init(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+	log := migrationLog.FileDriver{
+		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
+	}
+
+	err := log.Init()
 
 	if err != nil {
 		t.Fatal(err)
@@ -304,7 +324,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should be empty, found %d migrations\n", len(migrations))
 	}
 
-	Migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -318,7 +338,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 
 	Create(MIGRATION_DIR, "migrationB")
 
-	Migrate(conn, MIGRATION_DIR, migrationLog)
+	Migrate(conn, MIGRATION_DIR, &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -330,7 +350,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Expected migration to have step of 2, found %d", migrations[1].Step)
 	}
 
-	err = Rollback(conn, MIGRATION_DIR, migrationLog)
+	err = Rollback(conn, MIGRATION_DIR, &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -342,7 +362,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should contain 1 migration, found %d migrations\n", len(migrations))
 	}
 
-	Rollback(conn, MIGRATION_DIR, migrationLog)
+	Rollback(conn, MIGRATION_DIR, &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 

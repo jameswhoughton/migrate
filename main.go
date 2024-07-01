@@ -55,7 +55,7 @@ func Create(directory, name string) Migration {
 	return migration
 }
 
-func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
+func Migrate(driver *sql.DB, directory string, log migrationLog.MigrationLog) error {
 	migrations, err := os.ReadDir(directory)
 
 	if err != nil {
@@ -94,7 +94,10 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 			}
 		}
 
-		err = log.Add(migrationName[1], step)
+		err = log.Add(migrationLog.Migration{
+			Name: migrationName[1],
+			Step: step,
+		})
 
 		if err != nil {
 			return err
@@ -104,26 +107,16 @@ func Migrate(driver *sql.DB, directory string, log *migrationLog.MigrationLog) e
 	return nil
 }
 
-func isUpMigration(fileName string, log *migrationLog.MigrationLog) bool {
-	// Ignore log file
-	if fileName == log.Name() {
-		return false
-	}
-
-	// Ignore down migrations
-	if strings.HasSuffix(fileName, "_down.sql") {
-		return false
-	}
-
-	return true
+func isUpMigration(fileName string, log migrationLog.MigrationLog) bool {
+	return strings.HasSuffix(fileName, "_up.sql")
 }
 
-func Rollback(driver *sql.DB, directory string, log *migrationLog.MigrationLog) error {
-	if log.Count() == 0 {
+func Rollback(driver *sql.DB, directory string, log migrationLog.MigrationLog) error {
+	step := log.LastStep()
+
+	if step == 0 {
 		return errors.New("no migrations to roll back")
 	}
-
-	step := log.LastStep()
 
 	for log.LastStep() == step {
 		migration, err := log.Pop()
