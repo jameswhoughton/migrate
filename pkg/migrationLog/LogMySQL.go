@@ -6,11 +6,11 @@ import (
 	"fmt"
 )
 
-type DBDriver struct {
+type LogMySQL struct {
 	db sql.DB
 }
 
-func (d *DBDriver) Init() error {
+func (d *LogMySQL) Init() error {
 	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS migrations (id INT NOT NULL auto_increment, name VARCHAR(100) NOT NULL, step INT NOT NULL)")
 
 	if err != nil {
@@ -20,7 +20,7 @@ func (d *DBDriver) Init() error {
 	return nil
 }
 
-func (d *DBDriver) Add(m Migration) error {
+func (d *LogMySQL) Add(m Migration) error {
 	_, err := d.db.Exec("INSERT INTO migrations (name, step) VALUES (?, ?)", m.Name, m.Step)
 
 	if err != nil {
@@ -30,7 +30,7 @@ func (d *DBDriver) Add(m Migration) error {
 	return nil
 }
 
-func (d *DBDriver) Pop() (Migration, error) {
+func (d *LogMySQL) Pop() (Migration, error) {
 	row := d.db.QueryRow("SELECT FIRST id, name, step FROM migrations ORDER BY id DESC")
 
 	var id int
@@ -52,7 +52,7 @@ func (d *DBDriver) Pop() (Migration, error) {
 	}, nil
 }
 
-func (d *DBDriver) Contains(name string) bool {
+func (d *LogMySQL) Contains(name string) bool {
 	row := d.db.QueryRow("SELECT id FROM migrations WHERE name = ?", name)
 
 	err := row.Scan()
@@ -64,7 +64,7 @@ func (d *DBDriver) Contains(name string) bool {
 	return true
 }
 
-func (d *DBDriver) LastStep() int {
+func (d *LogMySQL) LastStep() int {
 	row := d.db.QueryRow("SELECT step FROM migrations ORDER BY id DESC")
 
 	var step int

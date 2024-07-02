@@ -6,7 +6,7 @@ type Migration struct {
 }
 
 type MigrationLog interface {
-	Init() error
+	init() error
 	Add(m Migration) error
 	Pop() (Migration, error)
 	Contains(name string) bool

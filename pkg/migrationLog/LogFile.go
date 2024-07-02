@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type FileDriver struct {
+type LogFile struct {
 	FilePath   string
 	migrations []Migration
 }
@@ -19,7 +19,7 @@ func (m *Migration) string() string {
 	return strconv.Itoa(m.Step) + "," + m.Name
 }
 
-func (ml *FileDriver) Load() error {
+func (ml *LogFile) load() error {
 	logFile, err := os.OpenFile(ml.FilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, os.ModeAppend)
 
 	if err != nil {
@@ -54,7 +54,7 @@ func (ml *FileDriver) Load() error {
 	return nil
 }
 
-func (ml *FileDriver) Contains(search string) bool {
+func (ml *LogFile) Contains(search string) bool {
 	for _, migration := range ml.migrations {
 		if migration.Name == search {
 			return true
@@ -64,11 +64,11 @@ func (ml *FileDriver) Contains(search string) bool {
 	return false
 }
 
-func (ml *FileDriver) Count() int {
+func (ml *LogFile) Count() int {
 	return len(ml.migrations)
 }
 
-func (ml *FileDriver) Add(m Migration) error {
+func (ml *LogFile) Add(m Migration) error {
 	file, err := os.OpenFile(ml.FilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 
 	if err != nil {
@@ -86,7 +86,7 @@ func (ml *FileDriver) Add(m Migration) error {
 	return nil
 }
 
-func (ml *FileDriver) Pop() (Migration, error) {
+func (ml *LogFile) Pop() (Migration, error) {
 	file, err := os.OpenFile(ml.FilePath, os.O_RDWR, 0644)
 	if err != nil {
 		return Migration{}, err
@@ -112,7 +112,7 @@ func (ml *FileDriver) Pop() (Migration, error) {
 	return migration, nil
 }
 
-func (ml *FileDriver) LastStep() int {
+func (ml *LogFile) LastStep() int {
 	if len(ml.migrations) == 0 {
 		return 0
 	}
@@ -123,7 +123,7 @@ func (ml *FileDriver) LastStep() int {
 }
 
 // Returns an instance of MigrationLog with migrations loaded
-func (ml *FileDriver) Init() error {
+func (ml *LogFile) init() error {
 	directory := filepath.Dir(ml.FilePath)
 
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
@@ -134,16 +134,30 @@ func (ml *FileDriver) Init() error {
 		err := os.WriteFile(ml.FilePath, []byte{}, 0644)
 
 		if err != nil {
-			return fmt.Errorf("Error creating log file: %w", err)
+			return fmt.Errorf("error creating log file: %w", err)
 		}
 	}
 
 	// Load the historic migrations from file
-	err := ml.Load()
+	err := ml.load()
 
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func NewFileLog(path string) (LogFile, error) {
+	log := LogFile{
+		FilePath: path,
+	}
+
+	err := log.init()
+
+	if err != nil {
+		return LogFile{}, fmt.Errorf("failed to create filelog: %w", err)
+	}
+
+	return log, nil
 }

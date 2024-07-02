@@ -72,11 +72,7 @@ func TestCountReturnsTheCorrectNumberOfMigrations(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		migrationLog := FileDriver{
-			FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
-		}
-
-		err = migrationLog.Load()
+		migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 		if err != nil {
 			t.Fatal(err)
@@ -130,11 +126,7 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		migrationLog := FileDriver{
-			FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
-		}
-
-		err = migrationLog.Load()
+		migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 		if err != nil {
 			t.Fatal(err)
@@ -150,7 +142,7 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 func TestAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
 	// Don't create the log directory, this will cause an error when writing to the log file
 
-	migrationLog := FileDriver{
+	migrationLog := LogFile{
 		FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
@@ -181,7 +173,7 @@ func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrationLog := FileDriver{
+	migrationLog := LogFile{
 		FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
@@ -210,6 +202,10 @@ func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 	}
 
 	migrationsFromFile, err := readLog(LOG_FILE)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if len(migrationsFromFile) != 2 {
 		t.Fatalf("Expected 2 migrations, got %d", len(migrationsFromFile))
@@ -240,7 +236,7 @@ func TestPopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrationLog := FileDriver{
+	migrationLog := LogFile{
 		FilePath: LOG_DIR + string(os.PathSeparator) + LOG_FILE,
 	}
 
@@ -278,13 +274,7 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	FilePath := LOG_DIR + string(os.PathSeparator) + LOG_FILE
-
-	migrationLog := FileDriver{
-		FilePath: FilePath,
-	}
-
-	err = migrationLog.Init()
+	migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 	if err != nil {
 		t.Fatal(err)
@@ -301,7 +291,7 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 	}
 }
 
-// InitFileDriver should create log file if missing
+// InitLogFile should create log file if missing
 func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
 	defer cleanFiles()
 
@@ -315,11 +305,11 @@ func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
 		t.Fatalf("File %s already exists", filePath)
 	}
 
-	migrationLog := FileDriver{
+	migrationLog := LogFile{
 		FilePath: filePath,
 	}
 
-	err := migrationLog.Init()
+	err := migrationLog.init()
 
 	if err != nil {
 		t.Fatal(err)
@@ -346,13 +336,7 @@ func TestLastStepReturnsNextAvaiableIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	filePath := LOG_DIR + string(os.PathSeparator) + LOG_FILE
-
-	migrationLog := FileDriver{
-		FilePath: filePath,
-	}
-
-	err = migrationLog.Init()
+	migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 	if err != nil {
 		t.Fatal(err)
