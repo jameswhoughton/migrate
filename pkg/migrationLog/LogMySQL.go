@@ -78,9 +78,9 @@ func (d *LogMySQL) LastStep() int {
 	return step
 }
 
-func NewLogMySQL(conn *sql.DB) (LogMySQL, error) {
+func NewLogMySQL(db *sql.DB) (LogMySQL, error) {
 	log := LogMySQL{
-		db: conn,
+		db: db,
 	}
 
 	err := log.init()

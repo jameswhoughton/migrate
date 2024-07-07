@@ -78,9 +78,9 @@ func (d *LogSQLite) LastStep() int {
 	return step
 }
 
-func NewLogSQLite(conn *sql.DB) (LogSQLite, error) {
+func NewLogSQLite(db *sql.DB) (LogSQLite, error) {
 	log := LogSQLite{
-		db: conn,
+		db: db,
 	}
 
 	err := log.init()

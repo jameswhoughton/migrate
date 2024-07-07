@@ -140,7 +140,7 @@ func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 
 // Migrate() should return error if the query fails to execute
 func TestReturnsErrorIfNQueryFails(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
+	db, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
@@ -160,7 +160,7 @@ func TestReturnsErrorIfNQueryFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Migrate(conn, MIGRATION_DIR, &log)
+	err = Migrate(db, MIGRATION_DIR, &log)
 
 	if err == nil {
 		t.Fatal("Expected error, got nil")
@@ -175,7 +175,7 @@ func TestReturnsErrorIfNQueryFails(t *testing.T) {
 
 // Migrate() should log migrations in .log
 func TestMigrateShouldLogMigrations(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
+	db, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
@@ -192,7 +192,7 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Migrate(conn, MIGRATION_DIR, &log)
+	err = Migrate(db, MIGRATION_DIR, &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +215,7 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 
 // Migrate() should run up migrations in order
 func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
+	db, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
@@ -231,9 +231,9 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Migrate(conn, MIGRATION_DIR, &log)
+	Migrate(db, MIGRATION_DIR, &log)
 
-	query, err := conn.Query("SELECT name FROM users")
+	query, err := db.Query("SELECT name FROM users")
 
 	if err != nil {
 		t.Errorf("Error when querying users %v\n", err)
@@ -252,7 +252,7 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 
 // Rollback() should run up migrations in reverse order
 func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
+	db, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
@@ -271,11 +271,11 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Migrate(conn, MIGRATION_DIR, &log)
+	Migrate(db, MIGRATION_DIR, &log)
 
-	Rollback(conn, MIGRATION_DIR, &log)
+	Rollback(db, MIGRATION_DIR, &log)
 
-	query, err := conn.Query("SELECT name FROM users")
+	query, err := db.Query("SELECT name FROM users")
 
 	if err != nil {
 		t.Errorf("Error when querying users %v\n", err)
@@ -295,7 +295,7 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 
 // migrate and rollback step correctly
 func TestMigrateandRollbackStepCorrectly(t *testing.T) {
-	conn, _ := sql.Open("sqlite3", "test.db")
+	db, _ := sql.Open("sqlite3", "test.db")
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
@@ -321,7 +321,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should be empty, found %d migrations\n", len(migrations))
 	}
 
-	Migrate(conn, MIGRATION_DIR, &log)
+	Migrate(db, MIGRATION_DIR, &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -335,7 +335,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 
 	Create(MIGRATION_DIR, "migrationB")
 
-	Migrate(conn, MIGRATION_DIR, &log)
+	Migrate(db, MIGRATION_DIR, &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -347,7 +347,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Expected migration to have step of 2, found %d", migrations[1].Step)
 	}
 
-	err = Rollback(conn, MIGRATION_DIR, &log)
+	err = Rollback(db, MIGRATION_DIR, &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -359,7 +359,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should contain 1 migration, found %d migrations\n", len(migrations))
 	}
 
-	Rollback(conn, MIGRATION_DIR, &log)
+	Rollback(db, MIGRATION_DIR, &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
