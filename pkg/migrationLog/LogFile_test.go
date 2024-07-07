@@ -109,6 +109,7 @@ func TestFileContainsReturnsTheCorrectResult(t *testing.T) {
 
 // Add() will not update the migrations array on error
 func TestFileAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
+	defer cleanFiles()
 	// Don't create the log directory, this will cause an error when writing to the log file
 
 	migrationLog := LogFile{

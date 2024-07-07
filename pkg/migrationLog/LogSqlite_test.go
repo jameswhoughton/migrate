@@ -92,8 +92,6 @@ func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 		},
 	}
 
-	os.Mkdir(LOG_DIR, 0755)
-
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			db, tearDown, err := sqliteDb()

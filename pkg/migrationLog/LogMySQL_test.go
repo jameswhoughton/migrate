@@ -2,7 +2,6 @@ package migrationLog
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -97,8 +96,6 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 			expected: true,
 		},
 	}
-
-	os.Mkdir(LOG_DIR, 0755)
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
