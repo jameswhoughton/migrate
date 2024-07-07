@@ -8,15 +8,22 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const CONNECTION = "root@tcp(127.0.0.1:8022)/testing"
+func mysqlDb() (*sql.DB, func(), error) {
+	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:8022)/testing")
 
-func tearDown(db *sql.DB) {
-	db.Exec("DROP TABLE migrations")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return db, func() {
+		db.Exec("DROP TABLE migrations")
+	}, nil
+
 }
 
 func TestNewLogMySQLCreatesMigrationsTable(t *testing.T) {
-	db, err := sql.Open("mysql", CONNECTION)
-	defer tearDown(db)
+	db, tearDown, err := mysqlDb()
+	defer tearDown()
 
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +48,7 @@ func TestNewLogMySQLCreatesMigrationsTable(t *testing.T) {
 
 // Contains() returns true if the given migration exists in the log
 func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
-	db, err := sql.Open("mysql", CONNECTION)
+	db, tearDown, err := mysqlDb()
 
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +102,7 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			defer tearDown(db)
+			defer tearDown()
 
 			migrationLog, err := NewLogMySQL(db)
 
@@ -115,9 +122,9 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 	}
 }
 
-func TestMySqlAddInesrtsMigrationIntoTable(t *testing.T) {
-	db, err := sql.Open("mysql", CONNECTION)
-	defer tearDown(db)
+func TestMySQLAddInesrtsMigrationIntoTable(t *testing.T) {
+	db, tearDown, err := mysqlDb()
+	defer tearDown()
 
 	if err != nil {
 		t.Fatal(err)
@@ -187,9 +194,9 @@ func TestMySqlAddInesrtsMigrationIntoTable(t *testing.T) {
 
 }
 
-func TestMySqlPopReturnsMigrationAndRemovesFromTable(t *testing.T) {
-	db, err := sql.Open("mysql", CONNECTION)
-	defer tearDown(db)
+func TestMySQLPopReturnsMigrationAndRemovesFromTable(t *testing.T) {
+	db, tearDown, err := mysqlDb()
+	defer tearDown()
 
 	if err != nil {
 		t.Fatal(err)
@@ -232,5 +239,52 @@ func TestMySqlPopReturnsMigrationAndRemovesFromTable(t *testing.T) {
 
 	if count != 0 {
 		t.Errorf("Expected table to be empty, found %d rows\n", count)
+	}
+}
+
+// NextStep returns the next available step index
+func TestMySQLLastStepReturnsNextAvaiableIndex(t *testing.T) {
+	db, tearDown, err := mysqlDb()
+	defer tearDown()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err := NewLogMySQL(db)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := 5
+
+	migrations := []Migration{
+		{
+			"aaa",
+			4,
+		},
+		{
+			"bbb",
+			5,
+		},
+		{
+			"ccc",
+			5,
+		},
+	}
+
+	for _, m := range migrations {
+		_, err = db.Exec("INSERT INTO migrations (name, step) VALUES (?, ?);", m.Name, m.Step)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	actual := log.LastStep()
+
+	if expected != actual {
+		t.Fatalf("Expected %d got %d", expected, actual)
 	}
 }
