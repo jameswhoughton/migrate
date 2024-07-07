@@ -68,7 +68,7 @@ func Migrate(driver *sql.DB, directory string, log migrationLog.MigrationLog) er
 	for _, migration := range migrations {
 		fileName := migration.Name()
 
-		if !isUpMigration(fileName, log) {
+		if !isUpMigration(fileName) {
 			continue
 		}
 
@@ -107,7 +107,7 @@ func Migrate(driver *sql.DB, directory string, log migrationLog.MigrationLog) er
 	return nil
 }
 
-func isUpMigration(fileName string, log migrationLog.MigrationLog) bool {
+func isUpMigration(fileName string) bool {
 	return strings.HasSuffix(fileName, "_up.sql")
 }
 
