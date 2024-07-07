@@ -7,11 +7,11 @@ import (
 )
 
 type LogMySQL struct {
-	db sql.DB
+	db *sql.DB
 }
 
-func (d *LogMySQL) Init() error {
-	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS migrations (id INT NOT NULL auto_increment, name VARCHAR(100) NOT NULL, step INT NOT NULL)")
+func (d *LogMySQL) init() error {
+	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS migrations (id INT PRIMARY KEY auto_increment, name VARCHAR(100) NOT NULL, step INT NOT NULL);")
 
 	if err != nil {
 		return fmt.Errorf("could not create migrations table: %w", err)
@@ -31,7 +31,7 @@ func (d *LogMySQL) Add(m Migration) error {
 }
 
 func (d *LogMySQL) Pop() (Migration, error) {
-	row := d.db.QueryRow("SELECT FIRST id, name, step FROM migrations ORDER BY id DESC")
+	row := d.db.QueryRow("SELECT id, name, step FROM migrations ORDER BY id DESC LIMIT 1")
 
 	var id int
 	var name string
@@ -76,4 +76,18 @@ func (d *LogMySQL) LastStep() int {
 	}
 
 	return step
+}
+
+func NewLogMySQL(conn *sql.DB) (LogMySQL, error) {
+	log := LogMySQL{
+		db: conn,
+	}
+
+	err := log.init()
+
+	if err != nil {
+		return LogMySQL{}, fmt.Errorf("failed to create MySQL log: %w", err)
+	}
+
+	return log, nil
 }

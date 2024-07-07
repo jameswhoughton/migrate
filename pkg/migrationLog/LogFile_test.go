@@ -53,39 +53,8 @@ func readLog(fileName string) ([]Migration, error) {
 	return migrations, nil
 }
 
-// Count() returns the correct number of migrations
-func TestCountReturnsTheCorrectNumberOfMigrations(t *testing.T) {
-	defer cleanFiles()
-
-	cases := [][]string{
-		{"0,a", "1,b", "1,c"},
-		{"0,a"},
-		{},
-	}
-
-	os.Mkdir(LOG_DIR, 0755)
-
-	for _, lines := range cases {
-		err := createLogFile(lines)
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if migrationLog.Count() != len(lines) {
-			t.Fatalf("Expected count %d, got %d", len(lines), migrationLog.Count())
-		}
-	}
-}
-
 // Contains() returns true if the given migration exists in the log
-func TestContainsReturnsTheCorrectResult(t *testing.T) {
+func TestFileContainsReturnsTheCorrectResult(t *testing.T) {
 	defer cleanFiles()
 
 	type testCase struct {
@@ -126,7 +95,7 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
+		migrationLog, err := NewLogFile(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 		if err != nil {
 			t.Fatal(err)
@@ -139,7 +108,7 @@ func TestContainsReturnsTheCorrectResult(t *testing.T) {
 }
 
 // Add() will not update the migrations array on error
-func TestAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
+func TestFileAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
 	// Don't create the log directory, this will cause an error when writing to the log file
 
 	migrationLog := LogFile{
@@ -158,7 +127,7 @@ func TestAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
 }
 
 // Add() will update the array of migrations and file
-func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
+func TestFileAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 	defer cleanFiles()
 
 	err := os.Mkdir(LOG_DIR, 0755)
@@ -221,7 +190,7 @@ func TestAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 }
 
 // Pop() will not update the migrations array on error
-func TestPopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
+func TestFilePopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
 	defer cleanFiles()
 
 	err := os.Mkdir(LOG_DIR, 0755)
@@ -257,7 +226,7 @@ func TestPopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
 }
 
 // Pop() will update the array of migrations and file
-func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
+func TestFilePopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 	defer cleanFiles()
 
 	err := os.Mkdir(LOG_DIR, 0755)
@@ -274,7 +243,7 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
+	migrationLog, err := NewLogFile(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 	if err != nil {
 		t.Fatal(err)
@@ -292,7 +261,7 @@ func TestPopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 }
 
 // InitLogFile should create log file if missing
-func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
+func TestFileInitShouldCreateLogFileIfMissing(t *testing.T) {
 	defer cleanFiles()
 
 	if _, err := os.Stat(LOG_DIR); !os.IsNotExist(err) {
@@ -321,7 +290,7 @@ func TestInitShouldCreateLogFileIfMissing(t *testing.T) {
 }
 
 // NextStep returns the next available step index
-func TestLastStepReturnsNextAvaiableIndex(t *testing.T) {
+func TestFileLastStepReturnsNextAvaiableIndex(t *testing.T) {
 	defer cleanFiles()
 
 	migrations := []string{"0,a", "1,b", "1,c"}
@@ -336,7 +305,7 @@ func TestLastStepReturnsNextAvaiableIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	migrationLog, err := NewFileLog(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
+	migrationLog, err := NewLogFile(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 	if err != nil {
 		t.Fatal(err)

@@ -64,10 +64,6 @@ func (ml *LogFile) Contains(search string) bool {
 	return false
 }
 
-func (ml *LogFile) Count() int {
-	return len(ml.migrations)
-}
-
 func (ml *LogFile) Add(m Migration) error {
 	file, err := os.OpenFile(ml.FilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 
@@ -148,7 +144,7 @@ func (ml *LogFile) init() error {
 	return nil
 }
 
-func NewFileLog(path string) (LogFile, error) {
+func NewLogFile(path string) (LogFile, error) {
 	log := LogFile{
 		FilePath: path,
 	}
@@ -156,7 +152,7 @@ func NewFileLog(path string) (LogFile, error) {
 	err := log.init()
 
 	if err != nil {
-		return LogFile{}, fmt.Errorf("failed to create filelog: %w", err)
+		return LogFile{}, fmt.Errorf("failed to create file log: %w", err)
 	}
 
 	return log, nil

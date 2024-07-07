@@ -145,11 +145,12 @@ func TestReturnsErrorIfNQueryFails(t *testing.T) {
 	defer cleanFiles()
 
 	os.Mkdir(MIGRATION_DIR, 0755)
-	log := migrationLog.FileDriver{
-		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
-	}
 
-	err := log.Init()
+	log, err := migrationLog.NewLogFile(MIGRATION_DIR + string(os.PathSeparator) + ".log")
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	migration := Create(MIGRATION_DIR, "migration")
 
@@ -181,11 +182,11 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 	migrationName := "create_user_table"
 
 	migrationPair := Create(MIGRATION_DIR, migrationName)
-	log := migrationLog.FileDriver{
-		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
-	}
+	log, err := migrationLog.NewLogFile(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
-	err := log.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if err != nil {
 		t.Fatal(err)
@@ -224,11 +225,7 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationA.up, []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))"), os.ModeAppend)
 	os.WriteFile(MIGRATION_DIR+string(os.PathSeparator)+migrationB.down, []byte("INSERT INTO users VALUES ('james')"), os.ModeAppend)
 
-	log := migrationLog.FileDriver{
-		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
-	}
-
-	err := log.Init()
+	log, err := migrationLog.NewLogFile(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
 	if err != nil {
 		t.Fatal(err)
@@ -259,11 +256,11 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	log := migrationLog.FileDriver{
-		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
-	}
+	log, err := migrationLog.NewLogFile(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
-	err := log.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 	migrationA := Create(MIGRATION_DIR, "migration")
 	migrationB := Create(MIGRATION_DIR, "migration")
 
@@ -302,11 +299,11 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 	defer os.Remove("test.db")
 	defer cleanFiles()
 
-	log := migrationLog.FileDriver{
-		FilePath: MIGRATION_DIR + string(os.PathSeparator) + ".log",
-	}
+	log, err := migrationLog.NewLogFile(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
-	err := log.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if err != nil {
 		t.Fatal(err)
