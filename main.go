@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/jameswhoughton/migrate/pkg/migrationLog"
@@ -55,8 +55,8 @@ func Create(directory, name string) Migration {
 	return migration
 }
 
-func Migrate(driver *sql.DB, directory string, log migrationLog.MigrationLog) error {
-	migrations, err := os.ReadDir(directory)
+func Migrate(driver *sql.DB, directory fs.FS, log migrationLog.MigrationLog) error {
+	migrations, err := fs.Glob(directory, `*_up.sql`)
 
 	if err != nil {
 		return err
@@ -66,20 +66,20 @@ func Migrate(driver *sql.DB, directory string, log migrationLog.MigrationLog) er
 	step := log.LastStep() + 1
 
 	for _, migration := range migrations {
-		fileName := migration.Name()
+		//fileName := migration
 
-		if !isUpMigration(fileName) {
-			continue
-		}
+		// if !isUpMigration(fileName) {
+		// 	continue
+		// }
 
-		migrationName := nameRegexp.FindStringSubmatch(fileName)
+		migrationName := nameRegexp.FindStringSubmatch(migration)
 
 		// Ignore any migrations that have already run
 		if log.Contains(migrationName[1]) {
 			continue
 		}
 
-		query, err := os.ReadFile(directory + string(os.PathSeparator) + fileName)
+		query, err := fs.ReadFile(directory, migration)
 
 		if err != nil {
 			return err
@@ -90,7 +90,7 @@ func Migrate(driver *sql.DB, directory string, log migrationLog.MigrationLog) er
 		if err != nil {
 			return ErrorQuery{
 				queryError: err,
-				fileName:   fileName,
+				fileName:   migration,
 			}
 		}
 
@@ -107,11 +107,11 @@ func Migrate(driver *sql.DB, directory string, log migrationLog.MigrationLog) er
 	return nil
 }
 
-func isUpMigration(fileName string) bool {
-	return strings.HasSuffix(fileName, "_up.sql")
-}
+// func isUpMigration(fileName string) bool {
+// 	return strings.HasSuffix(fileName, "_up.sql")
+// }
 
-func Rollback(driver *sql.DB, directory string, log migrationLog.MigrationLog) error {
+func Rollback(driver *sql.DB, directory fs.FS, log migrationLog.MigrationLog) error {
 	step := log.LastStep()
 
 	if step == 0 {
@@ -125,7 +125,7 @@ func Rollback(driver *sql.DB, directory string, log migrationLog.MigrationLog) e
 			return err
 		}
 
-		query, err := os.ReadFile(directory + string(os.PathSeparator) + migration.Name + "_down.sql")
+		query, err := fs.ReadFile(directory, migration.Name+"_down.sql")
 
 		if err != nil {
 			return err

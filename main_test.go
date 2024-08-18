@@ -160,7 +160,7 @@ func TestReturnsErrorIfNQueryFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Migrate(db, MIGRATION_DIR, &log)
+	err = Migrate(db, os.DirFS(MIGRATION_DIR), &log)
 
 	if err == nil {
 		t.Fatal("Expected error, got nil")
@@ -192,7 +192,7 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Migrate(db, MIGRATION_DIR, &log)
+	err = Migrate(db, os.DirFS(MIGRATION_DIR), &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -231,7 +231,7 @@ func TestMigrateShouldRunUpMigrationsInOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Migrate(db, MIGRATION_DIR, &log)
+	Migrate(db, os.DirFS(MIGRATION_DIR), &log)
 
 	query, err := db.Query("SELECT name FROM users")
 
@@ -271,9 +271,9 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Migrate(db, MIGRATION_DIR, &log)
+	Migrate(db, os.DirFS(MIGRATION_DIR), &log)
 
-	Rollback(db, MIGRATION_DIR, &log)
+	Rollback(db, os.DirFS(MIGRATION_DIR), &log)
 
 	query, err := db.Query("SELECT name FROM users")
 
@@ -321,7 +321,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should be empty, found %d migrations\n", len(migrations))
 	}
 
-	Migrate(db, MIGRATION_DIR, &log)
+	Migrate(db, os.DirFS(MIGRATION_DIR), &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -335,7 +335,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 
 	Create(MIGRATION_DIR, "migrationB")
 
-	Migrate(db, MIGRATION_DIR, &log)
+	Migrate(db, os.DirFS(MIGRATION_DIR), &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
@@ -347,7 +347,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Expected migration to have step of 2, found %d", migrations[1].Step)
 	}
 
-	err = Rollback(db, MIGRATION_DIR, &log)
+	err = Rollback(db, os.DirFS(MIGRATION_DIR), &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -359,7 +359,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should contain 1 migration, found %d migrations\n", len(migrations))
 	}
 
-	Rollback(db, MIGRATION_DIR, &log)
+	Rollback(db, os.DirFS(MIGRATION_DIR), &log)
 
 	migrations, _ = readLog(MIGRATION_DIR + string(os.PathSeparator) + ".log")
 
