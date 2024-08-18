@@ -49,10 +49,10 @@ func main() {
     db, _ := sql.Open("sqlite3", "test.db")
 
     // Call Migrate to run migrations
-    migrate.Migrate(db, migrationDir, log)
+    migrate.Migrate(db, os.DirFS(migrationDir), log)
     ...
     // Call Rollback to reverse migrations
-    migrate.Rollback(db, migrationDir, log)
+    migrate.Rollback(db, os.DirFS(migrationDir), log)
 }
 ```
 
@@ -76,10 +76,10 @@ func main() {
     log := migrationLog.NewLogMySQL(db)
 
     // Call Migrate to run migrations
-    migrate.Migrate(db, migrationDir, log)
+    migrate.Migrate(db,os.DirFS( migrationDir), log)
     ...
     // Call Rollback to reverse migrations
-    migrate.Rollback(db, migrationDir, log)
+    migrate.Rollback(db, os.DirFS(migrationDir), log)
 }
 ```
 
@@ -103,9 +103,9 @@ func main() {
     log := migrationLog.NewLogSQLite(db)
 
     // Call Migrate to run migrations
-    migrate.Migrate(db, migrationDir, log)
+    migrate.Migrate(db, os.DirFS(migrationDir), log)
     ...
     // Call Rollback to reverse migrations
-    migrate.Rollback(db, migrationDir, log)
+    migrate.Rollback(db, os.DirFS(migrationDir), log)
 }
 ```
