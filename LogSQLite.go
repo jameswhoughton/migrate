@@ -1,4 +1,4 @@
-package migrationLog
+package migrate
 
 import (
 	"database/sql"
@@ -6,12 +6,12 @@ import (
 	"fmt"
 )
 
-type LogMySQL struct {
+type LogSQLite struct {
 	db *sql.DB
 }
 
-func (d *LogMySQL) init() error {
-	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS migrations (id INT PRIMARY KEY auto_increment, name VARCHAR(100) NOT NULL, step INT NOT NULL);")
+func (d *LogSQLite) init() error {
+	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, step INTEGER NOT NULL);")
 
 	if err != nil {
 		return fmt.Errorf("could not create migrations table: %w", err)
@@ -20,7 +20,7 @@ func (d *LogMySQL) init() error {
 	return nil
 }
 
-func (d *LogMySQL) Add(m Migration) error {
+func (d *LogSQLite) Add(m Migration) error {
 	_, err := d.db.Exec("INSERT INTO migrations (name, step) VALUES (?, ?)", m.Name, m.Step)
 
 	if err != nil {
@@ -30,7 +30,7 @@ func (d *LogMySQL) Add(m Migration) error {
 	return nil
 }
 
-func (d *LogMySQL) Pop() (Migration, error) {
+func (d *LogSQLite) Pop() (Migration, error) {
 	row := d.db.QueryRow("SELECT id, name, step FROM migrations ORDER BY id DESC LIMIT 1")
 
 	var id int
@@ -52,7 +52,7 @@ func (d *LogMySQL) Pop() (Migration, error) {
 	}, nil
 }
 
-func (d *LogMySQL) Contains(name string) bool {
+func (d *LogSQLite) Contains(name string) bool {
 	row := d.db.QueryRow("SELECT id FROM migrations WHERE name = ?", name)
 
 	err := row.Scan()
@@ -64,7 +64,7 @@ func (d *LogMySQL) Contains(name string) bool {
 	return true
 }
 
-func (d *LogMySQL) LastStep() int {
+func (d *LogSQLite) LastStep() int {
 	row := d.db.QueryRow("SELECT step FROM migrations ORDER BY id DESC")
 
 	var step int
@@ -78,15 +78,15 @@ func (d *LogMySQL) LastStep() int {
 	return step
 }
 
-func NewLogMySQL(db *sql.DB) (LogMySQL, error) {
-	log := LogMySQL{
+func NewLogSQLite(db *sql.DB) (LogSQLite, error) {
+	log := LogSQLite{
 		db: db,
 	}
 
 	err := log.init()
 
 	if err != nil {
-		return LogMySQL{}, fmt.Errorf("failed to create MySQL log: %w", err)
+		return LogSQLite{}, fmt.Errorf("failed to create MySQL log: %w", err)
 	}
 
 	return log, nil

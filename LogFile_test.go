@@ -1,4 +1,4 @@
-package migrationLog
+package migrate
 
 import (
 	"bufio"
@@ -12,16 +12,8 @@ import (
 const LOG_DIR = "migrations_test"
 const LOG_FILE = ".log"
 
-func cleanFiles() {
-	os.RemoveAll(LOG_DIR)
-}
-
-func createLogFile(lines []string) error {
-	return os.WriteFile(LOG_DIR+string(os.PathSeparator)+LOG_FILE, []byte(strings.Join(lines, "\n")), 0644)
-}
-
-func readLog(fileName string) ([]Migration, error) {
-	logFile, err := os.Open(LOG_DIR + string(os.PathSeparator) + fileName)
+func readLog() ([]Migration, error) {
+	logFile, err := os.Open(LOG_DIR + string(os.PathSeparator) + LOG_FILE)
 
 	if err != nil {
 		return nil, err
@@ -53,9 +45,13 @@ func readLog(fileName string) ([]Migration, error) {
 	return migrations, nil
 }
 
+func createLogFile(lines []string) error {
+	return os.WriteFile(LOG_DIR+string(os.PathSeparator)+LOG_FILE, []byte(strings.Join(lines, "\n")), 0644)
+}
+
 // Contains() returns true if the given migration exists in the log
 func TestFileContainsReturnsTheCorrectResult(t *testing.T) {
-	defer cleanFiles()
+	defer os.RemoveAll(LOG_DIR)
 
 	type testCase struct {
 		migrations []string
@@ -109,7 +105,7 @@ func TestFileContainsReturnsTheCorrectResult(t *testing.T) {
 
 // Add() will not update the migrations array on error
 func TestFileAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
-	defer cleanFiles()
+	defer os.RemoveAll(LOG_DIR)
 	// Don't create the log directory, this will cause an error when writing to the log file
 
 	migrationLog := LogFile{
@@ -129,7 +125,7 @@ func TestFileAddWillNotAddMigrationsToArrayOnError(t *testing.T) {
 
 // Add() will update the array of migrations and file
 func TestFileAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
-	defer cleanFiles()
+	defer os.RemoveAll(LOG_DIR)
 
 	err := os.Mkdir(LOG_DIR, 0755)
 
@@ -171,7 +167,7 @@ func TestFileAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 		t.Fatalf("Expected 'testB', got %s", migrationLog.migrations[1].Name)
 	}
 
-	migrationsFromFile, err := readLog(LOG_FILE)
+	migrationsFromFile, err := readLog()
 
 	if err != nil {
 		t.Fatal(err)
@@ -192,7 +188,7 @@ func TestFileAddWillUpdateTheArrayOfMigrationsAndFile(t *testing.T) {
 
 // Pop() will not update the migrations array on error
 func TestFilePopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
-	defer cleanFiles()
+	defer os.RemoveAll(LOG_DIR)
 
 	err := os.Mkdir(LOG_DIR, 0755)
 
@@ -228,7 +224,7 @@ func TestFilePopWillNotUpdateTheMigationsArrayOnError(t *testing.T) {
 
 // Pop() will update the array of migrations and file
 func TestFilePopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
-	defer cleanFiles()
+	defer os.RemoveAll(LOG_DIR)
 
 	err := os.Mkdir(LOG_DIR, 0755)
 
@@ -263,7 +259,7 @@ func TestFilePopWillUpdateTheMigationsArrayAndFile(t *testing.T) {
 
 // InitLogFile should create log file if missing
 func TestFileInitShouldCreateLogFileIfMissing(t *testing.T) {
-	defer cleanFiles()
+	defer os.RemoveAll(LOG_DIR)
 
 	if _, err := os.Stat(LOG_DIR); !os.IsNotExist(err) {
 		t.Fatalf("Directory %s already exists:%v", LOG_DIR, err)
@@ -292,7 +288,7 @@ func TestFileInitShouldCreateLogFileIfMissing(t *testing.T) {
 
 // NextStep returns the next available step index
 func TestFileLastStepReturnsNextAvaiableIndex(t *testing.T) {
-	defer cleanFiles()
+	defer os.RemoveAll(LOG_DIR)
 
 	migrations := []string{"0,a", "1,b", "1,c"}
 

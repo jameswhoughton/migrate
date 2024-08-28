@@ -1,12 +1,12 @@
 # Migrate
 
-Lightweight, DB agnostic migration tool which can be embedded in your application.
+Lightweight, DB agnostic migration tool.
 
 ## Overview
 
 ### Migrations
 
-Migrations can be stored anywhere although the default location is in a `migrations` directory at the root of your project. Each migration consists of two `.sql` files an up and a down, this is flexible, if you know you will never rollback a specific migration (e.g. irreversible data change) then the _down migration can be excluded. The migration files should follow the format `{unix timestamp in nanoseconds}_{migration name}_{up/down}.sql`. Migrations can be created manually or with the createmigration cli tool.
+Migrations can be stored anywhere although the default location is in a `migrations` directory at the root of your project. Each migration consists of two `.sql` files an up and a down, this is, however, flexible, if you know you will never rollback a specific migration (e.g. irreversible data change) then the _down migration can be excluded. The migration files should follow the format `{prefix}_{migration name}_{up/down}.sql` where `prefix` is a value to order the migrations (e.g. unix timestamp in nanoseconds). Migrations can be created manually or with the createmigration cli tool.
 
 ### Log
 
@@ -23,7 +23,7 @@ For the file log driver, a file .log is created in the migrations directory this
 
 For the DB log drivers, a new table `migrations` will be automatically created (if it doesn't already exist) when a new log instance is created.
 
-All drivers implement the `MigrationLog` interface (`pkg/migrationLog/MigrationLog.go`).
+All drivers implement the `MigrationLog` interface (`migrationLog.go`).
 
 ## Usage
 
@@ -34,7 +34,6 @@ Install the dependency with `go get https://github.com/jameswhoughton/migrate`
 
 import (
     "github.com/jameswhoughton/migrate"
-    "github.com/jameswhoughton/migrate/pkg/migrationLog"
 )
 
 func main() {
@@ -43,7 +42,7 @@ func main() {
     migrationDir := "migrations"
 
     // Create an instance of the migration log
-    log := migrationLog.NewLogFile(migrationDir + "/.log")
+    log := migrate.NewLogFile(migrationDir + "/.log")
 
     // Create the connection to the DB
     db, _ := sql.Open("sqlite3", "test.db")
@@ -61,7 +60,6 @@ func main() {
 
 import (
     "github.com/jameswhoughton/migrate"
-    "github.com/jameswhoughton/migrate/pkg/migrationLog"
 )
 
 func main() {
@@ -73,7 +71,7 @@ func main() {
     db, _ := sql.Open("mysql", "...")
 
     // Create an instance of the migration log
-    log := migrationLog.NewLogMySQL(db)
+    log := migrate.NewLogMySQL(db)
 
     // Call Migrate to run migrations
     migrate.Migrate(db,os.DirFS( migrationDir), log)
@@ -88,7 +86,6 @@ func main() {
 
 import (
     "github.com/jameswhoughton/migrate"
-    "github.com/jameswhoughton/migrate/pkg/migrationLog"
 )
 
 func main() {
@@ -100,7 +97,7 @@ func main() {
     db, _ := sql.Open("sqlite3", "...")
 
     // Create an instance of the migration log
-    log := migrationLog.NewLogSQLite(db)
+    log := migrate.NewLogSQLite(db)
 
     // Call Migrate to run migrations
     migrate.Migrate(db, os.DirFS(migrationDir), log)

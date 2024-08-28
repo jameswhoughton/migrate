@@ -1,41 +1,40 @@
-package migrationLog
+package migrate
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-func sqliteDb() (*sql.DB, func(), error) {
-	db, err := sql.Open("sqlite3", "test.db")
+func mysqlDb() (*sql.DB, func(), error) {
+	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:8022)/testing")
 
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return db, func() {
-		os.Remove("test.db")
+		db.Exec("DROP TABLE migrations")
 	}, nil
 
 }
 
-func TestNewLogSQLiteCreatesMigrationsTable(t *testing.T) {
-	db, tearDown, err := sqliteDb()
+func TestNewLogMySQLCreatesMigrationsTable(t *testing.T) {
+	db, tearDown, err := mysqlDb()
 	defer tearDown()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = NewLogSQLite(db)
+	_, err = NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	row := db.QueryRow("SELECT COUNT(*) FROM sqlite_schema WHERE type='table' AND name='migrations';")
+	row := db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'testing' AND table_name = 'migrations';")
 
 	var count int
 
@@ -47,7 +46,13 @@ func TestNewLogSQLiteCreatesMigrationsTable(t *testing.T) {
 }
 
 // Contains() returns true if the given migration exists in the log
-func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
+func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
+	db, tearDown, err := mysqlDb()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	type testCase struct {
 		name       string
 		migrations []Migration
@@ -94,14 +99,9 @@ func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			db, tearDown, err := sqliteDb()
 			defer tearDown()
 
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			migrationLog, err := NewLogSQLite(db)
+			migrationLog, err := NewLogMySQL(db)
 
 			if err != nil {
 				t.Fatal(err)
@@ -119,15 +119,15 @@ func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 	}
 }
 
-func TestSQLiteAddInesrtsMigrationIntoTable(t *testing.T) {
-	db, tearDown, err := sqliteDb()
+func TestMySQLAddInsertsMigrationIntoTable(t *testing.T) {
+	db, tearDown, err := mysqlDb()
 	defer tearDown()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogSQLite(db)
+	log, err := NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -191,15 +191,15 @@ func TestSQLiteAddInesrtsMigrationIntoTable(t *testing.T) {
 
 }
 
-func TestSQLitePopReturnsMigrationAndRemovesFromTable(t *testing.T) {
-	db, tearDown, err := sqliteDb()
+func TestMySQLPopReturnsMigrationAndRemovesFromTable(t *testing.T) {
+	db, tearDown, err := mysqlDb()
 	defer tearDown()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogSQLite(db)
+	log, err := NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -240,15 +240,15 @@ func TestSQLitePopReturnsMigrationAndRemovesFromTable(t *testing.T) {
 }
 
 // NextStep returns the next available step index
-func TestSQLiteLastStepReturnsNextAvaiableIndex(t *testing.T) {
-	db, tearDown, err := sqliteDb()
+func TestMySQLLastStepReturnsNextAvaiableIndex(t *testing.T) {
+	db, tearDown, err := mysqlDb()
 	defer tearDown()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogSQLite(db)
+	log, err := NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)

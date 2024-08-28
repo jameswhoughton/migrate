@@ -1,8 +1,14 @@
-package migrationLog
+package migrate
+
+import "strconv"
 
 type Migration struct {
 	Name string
 	Step int
+}
+
+func (m *Migration) string() string {
+	return strconv.Itoa(m.Step) + "," + m.Name
 }
 
 type MigrationLog interface {

@@ -1,4 +1,4 @@
-package migrationLog
+package migrate
 
 import (
 	"bufio"
@@ -13,10 +13,6 @@ import (
 type LogFile struct {
 	FilePath   string
 	migrations []Migration
-}
-
-func (m *Migration) string() string {
-	return strconv.Itoa(m.Step) + "," + m.Name
 }
 
 func (ml *LogFile) load() error {
