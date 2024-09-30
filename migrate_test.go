@@ -1,4 +1,4 @@
-package migrate
+package migrate_test
 
 import (
 	"database/sql"
@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/jameswhoughton/migrate"
 )
 
 // Migrate() should return error if the query fails to execute
@@ -20,13 +22,13 @@ func TestReturnsErrorIfQueryFails(t *testing.T) {
 		"1_migration_up.sql": {Data: []byte("I am not a valid query")},
 	}
 
-	err := Migrate(db, testFs, &log)
+	err := migrate.Migrate(db, testFs, &log)
 
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
 
-	got, isCorrectType := err.(ErrorQuery)
+	got, isCorrectType := err.(migrate.ErrorQuery)
 
 	if !isCorrectType {
 		t.Fatalf("Expected ErrorQuery error, got %s", got)
@@ -46,7 +48,7 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 
 	log := newTestLog()
 
-	err := Migrate(db, testFs, &log)
+	err := migrate.Migrate(db, testFs, &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +82,7 @@ func TestMigrateShouldRunUpMigrationsInNameOrder(t *testing.T) {
 	}
 	log := newTestLog()
 
-	Migrate(db, testFs, &log)
+	migrate.Migrate(db, testFs, &log)
 
 	query, err := db.Query("SELECT name FROM users")
 

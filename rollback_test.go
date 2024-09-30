@@ -1,4 +1,4 @@
-package migrate
+package migrate_test
 
 import (
 	"database/sql"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/jameswhoughton/migrate"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -23,13 +24,13 @@ func TestRollbackShouldRunDownMigrationsInReverseOrder(t *testing.T) {
 		"2_migration_down.sql": {Data: []byte("CREATE TABLE users (ID INT PRIMARY KEY, name VARCHAR(100))")},
 	}
 
-	err := Migrate(db, testFs, &log)
+	err := migrate.Migrate(db, testFs, &log)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = Rollback(db, testFs, &log)
+	err = migrate.Rollback(db, testFs, &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +74,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should be empty, found %d migrations\n", len(migrations))
 	}
 
-	Migrate(db, testFs, &log)
+	migrate.Migrate(db, testFs, &log)
 
 	migrations = log.store
 
@@ -88,7 +89,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 	testFs["2_migrationB_up.sql"] = &fstest.MapFile{Data: []byte("")}
 	testFs["2_migrationB_down.sql"] = &fstest.MapFile{Data: []byte("")}
 
-	Migrate(db, testFs, &log)
+	migrate.Migrate(db, testFs, &log)
 
 	migrations = log.store
 
@@ -100,7 +101,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Expected migration to have step of 2, found %d", migrations[1].Step)
 	}
 
-	err := Rollback(db, testFs, &log)
+	err := migrate.Rollback(db, testFs, &log)
 
 	if err != nil {
 		t.Fatal(err)
@@ -112,7 +113,7 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 		t.Errorf("Log file should contain 1 migration, found %d migrations\n", len(migrations))
 	}
 
-	Rollback(db, testFs, &log)
+	migrate.Rollback(db, testFs, &log)
 
 	migrations = log.store
 

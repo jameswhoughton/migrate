@@ -1,10 +1,11 @@
-package migrate
+package migrate_test
 
 import (
 	"database/sql"
 	"os"
 	"testing"
 
+	"github.com/jameswhoughton/migrate"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -29,7 +30,7 @@ func TestNewLogSQLiteCreatesMigrationsTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = NewLogSQLite(db)
+	_, err = migrate.NewLogSQLite(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +51,7 @@ func TestNewLogSQLiteCreatesMigrationsTable(t *testing.T) {
 func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 	type testCase struct {
 		name       string
-		migrations []Migration
+		migrations []migrate.Migration
 		search     string
 		expected   bool
 	}
@@ -58,7 +59,7 @@ func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 	cases := []testCase{
 		{
 			name: "search in list",
-			migrations: []Migration{
+			migrations: []migrate.Migration{
 				{"a", 0},
 				{"b", 0},
 				{"c", 0},
@@ -68,13 +69,13 @@ func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 		},
 		{
 			name:       "empty migrations",
-			migrations: []Migration{},
+			migrations: []migrate.Migration{},
 			search:     "a",
 			expected:   false,
 		},
 		{
 			name: "partial search",
-			migrations: []Migration{
+			migrations: []migrate.Migration{
 				{"migration A", 0},
 				{"migration B", 0},
 			},
@@ -83,7 +84,7 @@ func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 		},
 		{
 			name: "different steps",
-			migrations: []Migration{
+			migrations: []migrate.Migration{
 				{"migration A", 0},
 				{"migration B", 1},
 			},
@@ -101,7 +102,7 @@ func TestSQLiteContainsReturnsTheCorrectResult(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			migrationLog, err := NewLogSQLite(db)
+			migrationLog, err := migrate.NewLogSQLite(db)
 
 			if err != nil {
 				t.Fatal(err)
@@ -127,7 +128,7 @@ func TestSQLiteAddInsertsMigrationIntoTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogSQLite(db)
+	log, err := migrate.NewLogSQLite(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +147,7 @@ func TestSQLiteAddInsertsMigrationIntoTable(t *testing.T) {
 	expectedName := "ABC"
 	expectedStep := 3
 
-	err = log.Add(Migration{
+	err = log.Add(migrate.Migration{
 		expectedName,
 		expectedStep,
 	})
@@ -162,7 +163,7 @@ func TestSQLiteAddInsertsMigrationIntoTable(t *testing.T) {
 	}
 	defer migrationQuery.Close()
 
-	var migrations []Migration
+	var migrations []migrate.Migration
 	var name string
 	var step int
 
@@ -174,7 +175,7 @@ func TestSQLiteAddInsertsMigrationIntoTable(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		migrations = append(migrations, Migration{name, step})
+		migrations = append(migrations, migrate.Migration{name, step})
 	}
 
 	if len(migrations) != 1 {
@@ -199,7 +200,7 @@ func TestSQLitePopReturnsMigrationAndRemovesFromTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogSQLite(db)
+	log, err := migrate.NewLogSQLite(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -248,7 +249,7 @@ func TestSQLiteLastStepReturnsNextAvaiableIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogSQLite(db)
+	log, err := migrate.NewLogSQLite(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -256,7 +257,7 @@ func TestSQLiteLastStepReturnsNextAvaiableIndex(t *testing.T) {
 
 	expected := 5
 
-	migrations := []Migration{
+	migrations := []migrate.Migration{
 		{
 			"aaa",
 			4,

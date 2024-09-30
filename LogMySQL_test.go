@@ -1,10 +1,11 @@
-package migrate
+package migrate_test
 
 import (
 	"database/sql"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jameswhoughton/migrate"
 )
 
 func mysqlDb() (*sql.DB, func(), error) {
@@ -28,7 +29,7 @@ func TestNewLogMySQLCreatesMigrationsTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = NewLogMySQL(db)
+	_, err = migrate.NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +56,7 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		migrations []Migration
+		migrations []migrate.Migration
 		search     string
 		expected   bool
 	}
@@ -63,7 +64,7 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 	cases := []testCase{
 		{
 			name: "search in list",
-			migrations: []Migration{
+			migrations: []migrate.Migration{
 				{"a", 0},
 				{"b", 0},
 				{"c", 0},
@@ -73,13 +74,13 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 		},
 		{
 			name:       "empty migrations",
-			migrations: []Migration{},
+			migrations: []migrate.Migration{},
 			search:     "a",
 			expected:   false,
 		},
 		{
 			name: "partial search",
-			migrations: []Migration{
+			migrations: []migrate.Migration{
 				{"migration A", 0},
 				{"migration B", 0},
 			},
@@ -88,7 +89,7 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 		},
 		{
 			name: "different steps",
-			migrations: []Migration{
+			migrations: []migrate.Migration{
 				{"migration A", 0},
 				{"migration B", 1},
 			},
@@ -101,7 +102,7 @@ func TestMySQLContainsReturnsTheCorrectResult(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			defer tearDown()
 
-			migrationLog, err := NewLogMySQL(db)
+			migrationLog, err := migrate.NewLogMySQL(db)
 
 			if err != nil {
 				t.Fatal(err)
@@ -127,7 +128,7 @@ func TestMySQLAddInsertsMigrationIntoTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogMySQL(db)
+	log, err := migrate.NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +147,7 @@ func TestMySQLAddInsertsMigrationIntoTable(t *testing.T) {
 	expectedName := "ABC"
 	expectedStep := 3
 
-	err = log.Add(Migration{
+	err = log.Add(migrate.Migration{
 		expectedName,
 		expectedStep,
 	})
@@ -162,7 +163,7 @@ func TestMySQLAddInsertsMigrationIntoTable(t *testing.T) {
 	}
 	defer migrationQuery.Close()
 
-	var migrations []Migration
+	var migrations []migrate.Migration
 	var name string
 	var step int
 
@@ -174,7 +175,7 @@ func TestMySQLAddInsertsMigrationIntoTable(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		migrations = append(migrations, Migration{name, step})
+		migrations = append(migrations, migrate.Migration{name, step})
 	}
 
 	if len(migrations) != 1 {
@@ -199,7 +200,7 @@ func TestMySQLPopReturnsMigrationAndRemovesFromTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogMySQL(db)
+	log, err := migrate.NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -248,7 +249,7 @@ func TestMySQLLastStepReturnsNextAvaiableIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	log, err := NewLogMySQL(db)
+	log, err := migrate.NewLogMySQL(db)
 
 	if err != nil {
 		t.Fatal(err)
@@ -256,7 +257,7 @@ func TestMySQLLastStepReturnsNextAvaiableIndex(t *testing.T) {
 
 	expected := 5
 
-	migrations := []Migration{
+	migrations := []migrate.Migration{
 		{
 			"aaa",
 			4,

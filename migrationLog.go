@@ -12,7 +12,7 @@ func (m *Migration) string() string {
 }
 
 type MigrationLog interface {
-	init() error
+	Init() error
 	Add(m Migration) error
 	Pop() (Migration, error)
 	Contains(name string) bool

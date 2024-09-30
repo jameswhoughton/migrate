@@ -12,7 +12,7 @@ import (
 
 type LogFile struct {
 	FilePath   string
-	migrations []Migration
+	Migrations []Migration
 }
 
 func (ml *LogFile) load() error {
@@ -41,7 +41,7 @@ func (ml *LogFile) load() error {
 			return errors.New("log line Step invalid: " + err.Error())
 		}
 
-		ml.migrations = append(ml.migrations, Migration{
+		ml.Migrations = append(ml.Migrations, Migration{
 			Name: parts[1],
 			Step: Step,
 		})
@@ -51,7 +51,7 @@ func (ml *LogFile) load() error {
 }
 
 func (ml *LogFile) Contains(search string) bool {
-	for _, migration := range ml.migrations {
+	for _, migration := range ml.Migrations {
 		if migration.Name == search {
 			return true
 		}
@@ -73,7 +73,7 @@ func (ml *LogFile) Add(m Migration) error {
 		return fmt.Errorf("cannot write to log file: %w", err)
 	}
 
-	ml.migrations = append(ml.migrations, m)
+	ml.Migrations = append(ml.Migrations, m)
 
 	return nil
 }
@@ -89,33 +89,33 @@ func (ml *LogFile) Pop() (Migration, error) {
 	file.Truncate(0)
 	file.Seek(0, 0)
 
-	lastIndex := len(ml.migrations) - 1
+	lastIndex := len(ml.Migrations) - 1
 
-	for i, migration := range ml.migrations {
+	for i, migration := range ml.Migrations {
 		if i < lastIndex {
 			fmt.Fprintln(file, migration.string())
 		}
 	}
 
-	migration := ml.migrations[lastIndex]
+	migration := ml.Migrations[lastIndex]
 
-	ml.migrations = ml.migrations[:lastIndex]
+	ml.Migrations = ml.Migrations[:lastIndex]
 
 	return migration, nil
 }
 
 func (ml *LogFile) LastStep() int {
-	if len(ml.migrations) == 0 {
+	if len(ml.Migrations) == 0 {
 		return 0
 	}
 
-	lastIndex := len(ml.migrations) - 1
+	lastIndex := len(ml.Migrations) - 1
 
-	return ml.migrations[lastIndex].Step
+	return ml.Migrations[lastIndex].Step
 }
 
 // Returns an instance of MigrationLog with migrations loaded
-func (ml *LogFile) init() error {
+func (ml *LogFile) Init() error {
 	directory := filepath.Dir(ml.FilePath)
 
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
@@ -145,7 +145,7 @@ func NewLogFile(path string) (LogFile, error) {
 		FilePath: path,
 	}
 
-	err := log.init()
+	err := log.Init()
 
 	if err != nil {
 		return LogFile{}, fmt.Errorf("failed to create file log: %w", err)

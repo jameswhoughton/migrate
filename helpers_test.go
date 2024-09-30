@@ -1,18 +1,20 @@
-package migrate
+package migrate_test
+
+import "github.com/jameswhoughton/migrate"
 
 type testLog struct {
-	store []Migration
+	store []migrate.Migration
 }
 
-func (ml *testLog) init() error {
+func (ml *testLog) Init() error {
 	return nil
 }
-func (ml *testLog) Add(m Migration) error {
+func (ml *testLog) Add(m migrate.Migration) error {
 	ml.store = append(ml.store, m)
 
 	return nil
 }
-func (ml *testLog) Pop() (Migration, error) {
+func (ml *testLog) Pop() (migrate.Migration, error) {
 	lastIndex := len(ml.store) - 1
 	migration := ml.store[lastIndex]
 
