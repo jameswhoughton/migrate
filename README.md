@@ -27,7 +27,7 @@ All drivers implement the `MigrationLog` interface (`migrationLog.go`).
 
 ## Usage
 
-Install the dependency with `go get https://github.com/jameswhoughton/migrate`
+Install the dependency with `go get github.com/jameswhoughton/migrate`
 
 ### Using the File Log Driver
 ```go
