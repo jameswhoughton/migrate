@@ -10,7 +10,7 @@ type LogSQLite struct {
 	db *sql.DB
 }
 
-func (d *LogSQLite) init() error {
+func (d *LogSQLite) Init() error {
 	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, step INTEGER NOT NULL);")
 
 	if err != nil {
@@ -83,7 +83,7 @@ func NewLogSQLite(db *sql.DB) (LogSQLite, error) {
 		db: db,
 	}
 
-	err := log.init()
+	err := log.Init()
 
 	if err != nil {
 		return LogSQLite{}, fmt.Errorf("failed to create MySQL log: %w", err)
