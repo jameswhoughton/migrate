@@ -100,3 +100,19 @@ func TestMigrateShouldRunUpMigrationsInNameOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestUpSuffixIsOptional(t *testing.T) {
+	db, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+
+	testFs := fstest.MapFS{
+		"1_migration.sql": {},
+	}
+	log := newTestLog()
+
+	migrate.Migrate(db, testFs, &log)
+
+	if len(log.store) != 1 {
+		t.Fatalf("Expected 1 migration to run, %d ran", len(log.store))
+	}
+}

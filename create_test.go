@@ -23,12 +23,12 @@ func TestPrefixSuffixCanBeAddedToMigration(t *testing.T) {
 		t.Fatalf("expected 2 migrations, got %d\n", len(files))
 	}
 
-	if files[0].Name() != "AAA_test_.sql" {
-		t.Fatalf("expected name to be AAA_test_.sql, got %s\n", files[0].Name())
+	if files[0].Name() != "AAA_test.sql" {
+		t.Fatalf("expected name to be AAA_test.sql, got %s\n", files[0].Name())
 	}
 
-	if files[1].Name() != "_test_AAA.sql" {
-		t.Fatalf("expected name to be testAAA.sql, got %s\n", files[0].Name())
+	if files[1].Name() != "test_AAA.sql" {
+		t.Fatalf("expected name to be test_AAA.sql, got %s\n", files[0].Name())
 	}
 }
 
@@ -50,7 +50,7 @@ func TestNonAlphaNumericCharactersShouldBeReplacedWithUnderscore(t *testing.T) {
 		t.Fatalf("Expected 1 file, got %d\n", len(files))
 	}
 
-	if files[0].Name() != "_test_123_bg_TEST_.sql" {
+	if files[0].Name() != "test_123_bg_TEST.sql" {
 		t.Fatalf("migration doesn't match the expected format, got: %s\n", files[0].Name())
 	}
 }

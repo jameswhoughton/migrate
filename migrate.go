@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"regexp"
 	"sort"
@@ -19,7 +20,7 @@ func (e ErrorQuery) Error() string {
 }
 
 func Migrate(driver *sql.DB, directory fs.FS, log MigrationLog) error {
-	migrations, err := fs.Glob(directory, `*_up.sql`)
+	migrations, err := fs.Glob(directory, `*.sql`)
 
 	if err != nil {
 		return err
@@ -28,14 +29,20 @@ func Migrate(driver *sql.DB, directory fs.FS, log MigrationLog) error {
 	// ensure migrations are ordered
 	sort.Strings(migrations)
 
-	nameRegexp := regexp.MustCompile(`(.*)_up\.sql`)
+	nameRegexp := regexp.MustCompile(`(.*?)(_up|_down)?\.sql`)
 	step := log.LastStep() + 1
 
 	for _, migration := range migrations {
-		migrationName := nameRegexp.FindStringSubmatch(migration)
+		nameParts := nameRegexp.FindStringSubmatch(migration)
+
+		// Ignore any down migrations
+		fmt.Print(nameParts)
+		if len(nameParts) == 3 && nameParts[2] == "_down" {
+			continue
+		}
 
 		// Ignore any migrations that have already run
-		if log.Contains(migrationName[1]) {
+		if log.Contains(nameParts[1]) {
 			continue
 		}
 
@@ -55,7 +62,7 @@ func Migrate(driver *sql.DB, directory fs.FS, log MigrationLog) error {
 		}
 
 		err = log.Add(Migration{
-			Name: migrationName[1],
+			Name: nameParts[1],
 			Step: step,
 		})
 
