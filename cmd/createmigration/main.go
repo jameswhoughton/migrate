@@ -25,7 +25,13 @@ func run(directory, name string, createPair bool) error {
 
 	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
 
-	up, err := migrate.MakeMigration(directory, name, timestamp, "_up")
+	suffix := ""
+
+	if createPair {
+		suffix = "up"
+	}
+
+	up, err := migrate.MakeMigration(directory, name, timestamp, suffix)
 
 	if err != nil {
 		return fmt.Errorf("up migration %s could not be created: %v", name, err)
@@ -34,7 +40,7 @@ func run(directory, name string, createPair bool) error {
 	migrations := []string{up}
 
 	if createPair {
-		down, err := migrate.MakeMigration(directory, name, timestamp, "_down")
+		down, err := migrate.MakeMigration(directory, name, timestamp, "down")
 
 		if err != nil {
 			return fmt.Errorf("down migration %s could not be created: %v", name, err)
