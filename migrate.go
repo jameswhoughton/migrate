@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"database/sql"
-	"fmt"
 	"io/fs"
 	"regexp"
 	"sort"
@@ -36,7 +35,6 @@ func Migrate(driver *sql.DB, directory fs.FS, log MigrationLog) error {
 		nameParts := nameRegexp.FindStringSubmatch(migration)
 
 		// Ignore any down migrations
-		fmt.Print(nameParts)
 		if len(nameParts) == 3 && nameParts[2] == "_down" {
 			continue
 		}
