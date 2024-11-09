@@ -74,7 +74,7 @@ func main() {
     log := migrate.NewLogMySQL(db)
 
     // Call Migrate to run migrations
-    migrate.Migrate(db,os.DirFS( migrationDir), log)
+    migrate.Migrate(db,os.DirFS(migrationDir), log)
     ...
     // Call Rollback to reverse migrations
     migrate.Rollback(db, os.DirFS(migrationDir), log)
