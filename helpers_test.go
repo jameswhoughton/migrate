@@ -2,6 +2,7 @@ package migrate_test
 
 import "github.com/jameswhoughton/migrate"
 
+// This is an in memory log specifically for use in tests
 type testLog struct {
 	store []migrate.Migration
 }
@@ -9,11 +10,13 @@ type testLog struct {
 func (ml *testLog) Init() error {
 	return nil
 }
+
 func (ml *testLog) Add(m migrate.Migration) error {
 	ml.store = append(ml.store, m)
 
 	return nil
 }
+
 func (ml *testLog) Pop() (migrate.Migration, error) {
 	lastIndex := len(ml.store) - 1
 	migration := ml.store[lastIndex]
@@ -22,6 +25,7 @@ func (ml *testLog) Pop() (migrate.Migration, error) {
 
 	return migration, nil
 }
+
 func (ml *testLog) Contains(name string) bool {
 	for _, migration := range ml.store {
 		if migration.Name == name {
@@ -31,6 +35,7 @@ func (ml *testLog) Contains(name string) bool {
 
 	return false
 }
+
 func (ml *testLog) LastStep() int {
 	if len(ml.store) == 0 {
 		return 0

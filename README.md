@@ -25,6 +25,8 @@ For the DB log drivers, a new table `migrations` will be automatically created (
 
 All drivers implement the `MigrationLog` interface (`migrationLog.go`).
 
+**Note The log does not have to be stored in the same DB that will be migrated, the list of drivers above does not impact the ability to run migrations using a different DBMS** 
+
 ## Usage
 
 Install the dependency with `go get github.com/jameswhoughton/migrate`

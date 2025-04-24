@@ -2,7 +2,6 @@ package migrate_test
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -59,8 +58,6 @@ func TestMigrateShouldLogMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	fmt.Print(migrations)
 
 	if len(migrations) != 1 {
 		t.Errorf("Expected 1 migration got %d\n", len(migrations))

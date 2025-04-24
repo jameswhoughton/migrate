@@ -64,8 +64,6 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 	testFs := fstest.MapFS{
 		"1_migrationA_up.sql":   {Data: []byte("")},
 		"1_migrationA_down.sql": {Data: []byte("")},
-		// "2_migrationB_up.sql":   {Data: []byte("")},
-		// "2_migrationB_down.sql": {Data: []byte("")},
 	}
 
 	migrations := log.store
@@ -119,5 +117,40 @@ func TestMigrateandRollbackStepCorrectly(t *testing.T) {
 
 	if len(migrations) != 0 {
 		t.Errorf("Log should now be empty, found %d migrations\n", len(migrations))
+	}
+}
+
+func TestRollbackContinuesIfARollbackFileDoesNotExist(t *testing.T) {
+	db, _ := sql.Open("sqlite3", "test.db")
+	defer os.Remove("test.db")
+
+	log := newTestLog()
+
+	testFs := fstest.MapFS{
+		"1_migrationA_up.sql":   {Data: []byte("")},
+		"1_migrationA_down.sql": {Data: []byte("")},
+		"2_migrationB_up.sql":   {Data: []byte("")},
+		"3_migrationC_up.sql":   {Data: []byte("")},
+		"3_migrationC_down.sql": {Data: []byte("")},
+	}
+
+	migrate.Migrate(db, testFs, &log)
+
+	migrations := log.store
+
+	if len(migrations) != 3 {
+		t.Fatalf("Log file should contain 3 migrations, found %d migrations\n", len(migrations))
+	}
+
+	err := migrate.Rollback(db, testFs, &log)
+
+	if err != nil {
+		t.Errorf("unexpected error rolling back migrations: %v", err)
+	}
+
+	migrations = log.store
+
+	if len(migrations) != 0 {
+		t.Errorf("Log file should contain 0 migration, found %d migrations\n", len(migrations))
 	}
 }
